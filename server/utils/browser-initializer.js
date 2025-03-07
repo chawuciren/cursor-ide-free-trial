@@ -4,32 +4,27 @@ const logger = require('./logger');
 const path = require('path');
 const delay = require('./delay');
 const HumanBehavior = require('./human-behavior');
+const os = require('os');
 
-// 添加Stealth插件
-puppeteer.use(StealthPlugin());
-
-// 配置Stealth插件选项
-const stealthPluginOptions = {
-    enabledEvasions: [
-        'chrome.app',
-        'chrome.csi',
-        'chrome.loadTimes',
-        'chrome.runtime',
-        'defaultArgs',
-        'iframe.contentWindow',
-        'media.codecs',
-        'navigator.hardwareConcurrency',
-        'navigator.languages',
-        'navigator.permissions',
-        'navigator.plugins',
-        'navigator.webdriver',
-        'sourceurl',
-        'webgl.vendor',
-        'window.outerdimensions',
-    ],
-};
-
-puppeteer.use(StealthPlugin(stealthPluginOptions));
+// 初始化StealthPlugin
+puppeteer.use(
+    StealthPlugin({
+        enabledEvasions: new Set([
+            'chrome.app',
+            'chrome.runtime',
+            'iframe.contentWindow',
+            'media.codecs',
+            'navigator.hardwareConcurrency',
+            'navigator.languages',
+            'navigator.permissions',
+            'navigator.plugins',
+            'navigator.webdriver',
+            'navigator.vendor',
+            'webgl.vendor',
+            'window.outerdimensions'
+        ])
+    })
+);
 
 // 浏览器扩展配置
 const EXTENSIONS = {
@@ -45,6 +40,26 @@ function getExtensionsDir() {
     return process.env.NODE_ENV === 'development'
         ? path.join(process.env.APP_ROOT, 'extensions')
         : path.join(process.env.RES_PATH, 'extensions');
+}
+
+// 获取Chrome可执行文件路径
+function getChromePath() {
+    const platform = os.platform();
+    const rootDir = process.env.NODE_ENV === 'development'
+        ? process.env.APP_ROOT
+        : process.env.RES_PATH;
+
+    switch (platform) {
+        case 'win32':
+            return path.join(rootDir, 'chrome_win32', 'chrome.exe');
+        case 'darwin':
+            return path.join(rootDir, 'chrome_mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium');
+        case 'linux':
+            return path.join(rootDir, 'chrome_linux', 'chrome');
+        default:
+            logger.warn(`未知平台 ${platform}，将使用系统默认Chrome`);
+            return null;
+    }
 }
 
 // 浏览器初始化配置
@@ -91,7 +106,7 @@ class BrowserInitializer {
                 await this.humanBehavior.resetBrowserFingerprint(page);
                 
                 // 配置扩展
-                await this.configureExtensions(browser);
+                // await this.configureExtensions(browser);
                 
                 // 检查指纹
                 if (this.config.browser.checkFingerprint) {
@@ -139,16 +154,87 @@ class BrowserInitializer {
 
         const launchOptions = {
             headless: this.config.browser.headless ? "new" : false,
+            executablePath: getChromePath(),
             args: [
                 "--no-sandbox",
-                `--disable-extensions-except=${extensionPath}`,
-                `--load-extension=${extensionPath}`
+                "--disable-dev-shm-usage",
+                "--disable-web-security",
+                "--disable-features=IsolateOrigins,site-per-process,Translate",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-site-isolation-trials",
+                "--disable-background-timer-throttling",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding",
+                "--disable-features=Autofill,AutofillServerCommunication",
+                "--enable-features=NetworkService,NetworkServiceInProcess",
+                "--disable-blink-features",
+                "--disable-notifications",
+                "--no-first-run",
+                "--password-store=basic",
+                "--window-size=1920,1080",
+                "--start-maximized",
+                "--disable-gpu",
+                "--disable-software-rasterizer",
+                "--disable-dev-tools",
+                "--no-default-browser-check",
+                "--disable-sync",
+                "--disable-prompt-on-repost",
+                "--disable-domain-reliability",
+                "--disable-client-side-phishing-detection",
+                "--disable-component-update",
+                "--disable-breakpad",
+                "--disable-background-networking",
+                "--disable-default-apps",
+                "--disable-dinosaur-easter-egg",
+                "--disable-hang-monitor",
+                "--disable-popup-blocking",
+                "--disable-print-preview",
+                "--disable-metrics",
+                "--disable-speech-api",
+                "--disable-voice-input",
+                "--disable-wake-on-wifi",
+                "--disable-partial-raster",
+                "--metrics-recording-only",
+                "--use-mock-keychain",
+                "--force-color-profile=srgb",
+                "--disable-zero-browsers-open-for-tests",
+                "--disable-prompt-on-repost",
+                "--disable-setuid-sandbox",
+                "--disable-webgl",
+                "--disable-threaded-animation",
+                "--disable-threaded-scrolling",
+                "--disable-web-security",
+                "--disable-xss-auditor",
+                "--ignore-certificate-errors",
+                "--allow-running-insecure-content",
+                "--disable-permissions-api",
+                "--disable-automation",
+                `--window-position=${Math.floor(Math.random() * 100)},${Math.floor(Math.random() * 100)}`,
+                `--user-agent=${this.config.browser.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}`
             ],
-            defaultViewport: {
-                width: 1920,
-                height: 1080
-            }
+            defaultViewport: null,
+            ignoreDefaultArgs: [
+                "--enable-automation",
+                "--enable-blink-features=AutomationControlled",
+                "--enable-blink-features=IdleDetection",
+                "--enable-logging",
+                "about:blank",
+                "--headless=new"
+            ],
+            ignoreHTTPSErrors: true
         };
+
+        // 如果找不到指定的Chrome路径，移除executablePath选项
+        if (!launchOptions.executablePath) {
+            delete launchOptions.executablePath;
+            logger.warn('未找到指定的Chrome路径，将使用系统默认Chrome');
+        } else {
+            logger.info(`使用自定义Chrome路径: ${launchOptions.executablePath}`);
+        }
+
+        if (!this.config.browser.headless) {
+            launchOptions.args.push("--auto-open-devtools-for-tabs");
+        }
 
         if (this.config.proxy.enabled && this.config.browser.proxy) {
             const proxyUrl = this._buildProxyUrl();
@@ -214,10 +300,14 @@ class BrowserInitializer {
     async _checkIntoliFingerprint(page) {
         try {
             await page.goto('https://bot.sannysoft.com', { 
-                waitUntil: 'networkidle0',
-                timeout: 30000 
+                waitUntil: ['load', 'domcontentloaded', 'networkidle0'],
+                timeout: 60000 
             });
+            await delay(1000000);
 
+            // 等待页面完全加载并稳定
+            await page.waitForFunction(() => document.readyState === 'complete');
+            await delay(2000); // 使用delay工具函数替代waitForTimeout
             await page.waitForSelector('h1 + table tr', { timeout: 30000 });
             
             const testData = await page.evaluate(() => {
@@ -257,44 +347,28 @@ class BrowserInitializer {
                     criticalTests,
                     summary: {
                         totalTests: testResults.length,
-                        passedTests: testResults.filter(r => r.passed).length,
-                        allCriticalPassed: Object.values(criticalTests).every(v => v === true)
+                        passedTests: testResults.filter(t => t.passed).length,
+                        allCriticalPassed: Object.values(criticalTests).every(v => v)
                     }
                 };
             });
             
+            logger.info('Intoli测试数据:', testData);
             if (!testData) {
                 return { success: false, reason: 'Intoli测试：无法获取测试数据' };
             }
 
             if (!testData.summary.allCriticalPassed) {
-                const failedTests = Object.entries(testData.criticalTests)
-                    .filter(([, passed]) => !passed)
-                    .map(([name]) => name)
-                    .join(', ');
-                    
-                return { 
-                    success: false, 
-                    reason: `Intoli测试：关键指标未通过: ${failedTests}` 
+                return {
+                    success: false,
+                    reason: `Intoli测试：关键测试未通过 (${testData.summary.passedTests}/${testData.summary.totalTests})`
                 };
             }
 
-            // 记录测试结果
-            let resultText = '=== Intoli.com 浏览器检测结果 ===\n\n';
-            resultText += `总体状态: ${testData.summary.allCriticalPassed ? '通过' : '未通过'}\n`;
-            resultText += `通过率: ${testData.summary.passedTests}/${testData.summary.totalTests}\n\n`;
-            
-            resultText += '关键测试项:\n';
-            Object.entries(testData.criticalTests).forEach(([test, passed]) => {
-                resultText += `${test}: ${passed ? '通过' : '未通过'}\n`;
-            });
-
-            logger.info('\n' + resultText);
             return { success: true };
-
         } catch (error) {
-            logger.warn('Intoli指纹检查失败:', error.message);
-            return { success: false, reason: `Intoli测试失败: ${error.message}` };
+            logger.error('Intoli指纹检查出错:', error);
+            return { success: false, reason: `Intoli测试出错: ${error.message}` };
         }
     }
 
@@ -315,6 +389,8 @@ class BrowserInitializer {
                 const fpContainer = document.querySelector('.ellipsis-all');
                 return fpContainer && !fpContainer.textContent.includes('Computing');
             }, { timeout: 30000, polling: 1000 });
+
+            await delay(2000); // 使用delay工具函数替代waitForTimeout
 
             const fpData = await page.evaluate(() => {
                 const getSection = (title) => {

@@ -146,30 +146,296 @@ class HumanBehavior {
             
             // 获取CDP会话
             const client = await page.target().createCDPSession();
-            
-            // 生成随机用户代理
-            const userAgent = this.#generateRandomUserAgent();
-            
-            // 随机选择GPU信息
-            const gpu = this.#getRandomItem(this.#gpuVendors);
-            
-            // 随机选择语言
-            const languages = this.#getRandomItem(this.#languages);
-            
-            // 随机选择屏幕分辨率
-            const screen = this.#getRandomItem(this.#screenResolutions);
 
-            // CDP层：设置基础特征
-            await this.#applyCDPOverrides(client, {
-                userAgent,
-                languages,
-                screen
+            // 注入预防检测的 JavaScript
+            await page.evaluateOnNewDocument(() => {
+                // 处理 webdriver
+                delete Object.getPrototypeOf(navigator).webdriver;
+                
+                // 使用多层保护来隐藏 webdriver
+                const originalNavigator = navigator;
+                const navigatorProxy = new Proxy(navigator, {
+                    has: (target, key) => {
+                        if (key === 'webdriver') return false;
+                        return key in target;
+                    },
+                    get: (target, key) => {
+                        if (key === 'webdriver') return undefined;
+                        return Reflect.get(target, key);
+                    }
+                });
+
+                // 替换全局的 navigator
+                Object.defineProperty(window, 'navigator', {
+                    value: navigatorProxy,
+                    configurable: false,
+                    writable: false
+                });
+
+                // 处理 navigator 原型
+                const navigatorProto = Object.getPrototypeOf(originalNavigator);
+                Object.defineProperty(navigatorProto, 'webdriver', {
+                    get: () => undefined,
+                    set: () => false,
+                    configurable: false,
+                    enumerable: false
+                });
+
+                // 清理所有可能的自动化标记
+                const cleanAutomationFlags = () => {
+                    const protectedProps = [
+                        'webdriver',
+                        '_selenium',
+                        'callSelenium',
+                        '_Selenium_IDE_Recorder',
+                        '__webdriver_evaluate',
+                        '__selenium_evaluate',
+                        '__webdriver_script_fn',
+                        '__webdriver_script_func',
+                        '__webdriver_script_function',
+                        '__webdriver',
+                        '__webdriver_unwrapped',
+                        '__webdriver_script_function',
+                        '$chrome_asyncScriptInfo',
+                        '$cdc_asdjflasutopfhvcZLmcfl_',
+                        'cdc_adoQpoasnfa76pfcZLmcfl_Array',
+                        'cdc_adoQpoasnfa76pfcZLmcfl_Promise',
+                        'cdc_adoQpoasnfa76pfcZLmcfl_Symbol',
+                        '_WEBDRIVER_ELEM_CACHE'
+                    ];
+
+                    const objects = [window, document, navigator];
+                    for (const object of objects) {
+                        for (const prop of protectedProps) {
+                            if (prop in object) {
+                                delete object[prop];
+                                Object.defineProperty(object, prop, {
+                                    get: () => undefined,
+                                    set: () => false,
+                                    configurable: false,
+                                    enumerable: false
+                                });
+                            }
+                        }
+                    }
+
+                    // 清理 window 属性
+                    for (const key in window) {
+                        if (key.match(/driver|webdriver|selenium/gi)) {
+                            delete window[key];
+                            Object.defineProperty(window, key, {
+                                get: () => undefined,
+                                set: () => false,
+                                configurable: false,
+                                enumerable: false
+                            });
+                        }
+                    }
+                };
+
+                cleanAutomationFlags();
+
+                // 处理 chrome
+                const chromeObj = {
+                    app: {
+                        isInstalled: false,
+                        InstallState: {
+                            DISABLED: 'disabled',
+                            INSTALLED: 'installed',
+                            NOT_INSTALLED: 'not_installed'
+                        },
+                        RunningState: {
+                            CANNOT_RUN: 'cannot_run',
+                            READY_TO_RUN: 'ready_to_run',
+                            RUNNING: 'running'
+                        },
+                        getDetails: function() { return {}; },
+                        getIsInstalled: function() { return false; },
+                        installState: function() { return 'not_installed'; },
+                        runningState: function() { return 'cannot_run'; }
+                    },
+                    runtime: {
+                        PlatformOs: {
+                            MAC: 'mac',
+                            WIN: 'win',
+                            ANDROID: 'android',
+                            CROS: 'cros',
+                            LINUX: 'linux',
+                            OPENBSD: 'openbsd'
+                        },
+                        PlatformArch: {
+                            ARM: 'arm',
+                            X86_32: 'x86-32',
+                            X86_64: 'x86-64'
+                        },
+                        RequestUpdateCheckStatus: {
+                            THROTTLED: 'throttled',
+                            NO_UPDATE: 'no_update',
+                            UPDATE_AVAILABLE: 'update_available'
+                        },
+                        OnInstalledReason: {
+                            INSTALL: 'install',
+                            UPDATE: 'update',
+                            CHROME_UPDATE: 'chrome_update',
+                            SHARED_MODULE_UPDATE: 'shared_module_update'
+                        },
+                        OnRestartRequiredReason: {
+                            APP_UPDATE: 'app_update',
+                            OS_UPDATE: 'os_update',
+                            PERIODIC: 'periodic'
+                        },
+                        connect: function() {
+                            throw new Error('Extension context invalidated.');
+                        },
+                        sendMessage: function() {
+                            return Promise.resolve();
+                        }
+                    },
+                    csi: function() { return {}; },
+                    loadTimes: function() { return {}; }
+                };
+
+                // 使用代理来模拟真实的 chrome 对象
+                const chromeHandler = {
+                    get(target, property) {
+                        if (property in target) {
+                            const value = target[property];
+                            if (typeof value === 'object' && value !== null) {
+                                return new Proxy(value, chromeHandler);
+                            }
+                            return value;
+                        }
+                        return undefined;
+                    },
+                    has(target, property) {
+                        return property in target;
+                    }
+                };
+
+                // 设置 chrome 对象
+                Object.defineProperty(window, 'chrome', {
+                    value: new Proxy(chromeObj, chromeHandler),
+                    configurable: false,
+                    writable: false,
+                    enumerable: true
+                });
+
+                // 处理 plugins
+                const plugins = [
+                    {
+                        0: {
+                            type: 'application/x-google-chrome-pdf',
+                            suffixes: 'pdf',
+                            description: 'Portable Document Format',
+                            enabledPlugin: true
+                        },
+                        name: 'Chrome PDF Plugin',
+                        filename: 'internal-pdf-viewer',
+                        description: 'Portable Document Format',
+                        length: 1
+                    },
+                    {
+                        0: {
+                            type: 'application/pdf',
+                            suffixes: 'pdf',
+                            description: '',
+                            enabledPlugin: true
+                        },
+                        name: 'Chrome PDF Viewer',
+                        filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
+                        description: '',
+                        length: 1
+                    },
+                    {
+                        0: {
+                            type: 'application/x-nacl',
+                            suffixes: '',
+                            description: 'Native Client Executable',
+                            enabledPlugin: true
+                        },
+                        1: {
+                            type: 'application/x-pnacl',
+                            suffixes: '',
+                            description: 'Portable Native Client Executable',
+                            enabledPlugin: true
+                        },
+                        name: 'Native Client',
+                        filename: 'internal-nacl-plugin',
+                        description: '',
+                        length: 2
+                    }
+                ];
+
+                // 创建 PluginArray
+                const createPluginArray = () => {
+                    const pluginArray = [];
+                    plugins.forEach((plugin, index) => {
+                        pluginArray[index] = plugin;
+                        pluginArray[plugin.name] = plugin;
+                    });
+                    Object.setPrototypeOf(pluginArray, PluginArray.prototype);
+                    Object.defineProperty(pluginArray, 'length', {
+                        value: plugins.length,
+                        writable: false,
+                        enumerable: true
+                    });
+                    return pluginArray;
+                };
+
+                // 设置 plugins
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => createPluginArray(),
+                    enumerable: true,
+                    configurable: false
+                });
+
+                // 处理 languages
+                Object.defineProperty(navigator, 'languages', {
+                    get: () => ['en-US', 'en'],
+                    enumerable: true,
+                    configurable: false
+                });
+
+                // 处理 permissions
+                const originalQuery = window.navigator.permissions.query;
+                window.navigator.permissions.query = (parameters) => 
+                    parameters.name === 'notifications' 
+                        ? Promise.resolve({ state: Notification.permission })
+                        : originalQuery(parameters);
+
+                // 修改 Error 堆栈
+                const errorHandler = {
+                    get(target, property) {
+                        if (property === 'stack') {
+                            return target[property].replace(/\n.*?(puppeteer|webdriver|selenium|driver).*$/gm, '');
+                        }
+                        return target[property];
+                    }
+                };
+
+                window.Error = new Proxy(Error, {
+                    construct(target, args) {
+                        const error = new target(...args);
+                        return new Proxy(error, errorHandler);
+                    }
+                });
+
+                // 修改 WebGL
+                if (window.WebGLRenderingContext) {
+                    const getParameter = WebGLRenderingContext.prototype.getParameter;
+                    WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                        if (parameter === 37445) return 'Intel Inc.';
+                        if (parameter === 37446) return 'Intel Iris OpenGL Engine';
+                        return getParameter.apply(this, arguments);
+                    };
+                }
             });
 
-            // 注入层：添加保护脚本
-            await this.#injectProtections(page, {
-                gpu,
-                languages
+            // 使用CDP设置更多属性
+            await this.#applyCDPOverrides(client, {
+                userAgent: this.#generateRandomUserAgent(),
+                languages: this.#getRandomItem(this.#languages),
+                screen: this.#getRandomItem(this.#screenResolutions)
             });
 
             logger.info('浏览器指纹重置完成');
@@ -184,187 +450,113 @@ class HumanBehavior {
      * @private
      */
     async #applyCDPOverrides(client, { userAgent, languages, screen }) {
-        // 设置User-Agent
-        await client.send('Network.setUserAgentOverride', {
-            userAgent: userAgent,
-            acceptLanguage: languages[0],
-            platform: userAgent.includes('Windows') ? 'Windows' : userAgent.includes('Macintosh') ? 'MacOS' : 'Linux'
-        });
-
-        // 设置语言
-        await client.send('Emulation.setLocaleOverride', {
-            locale: languages[0]
-        });
-
-        // 设置时区
-        await client.send('Emulation.setTimezoneOverride', {
-            timezoneId: 'Asia/Shanghai'
-        });
-
-        // 设置设备参数
-        await client.send('Emulation.setDeviceMetricsOverride', {
-            width: screen.width,
-            height: screen.height,
-            deviceScaleFactor: 1,
-            mobile: false
-        });
-    }
-
-    /**
-     * 注入保护脚本
-     * @private
-     */
-    async #injectProtections(page, { gpu, languages }) {
-        // 基础浏览器API保护
-        await page.evaluateOnNewDocument(() => {
-            // 基础navigator属性
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => {
-                    const fakePlugins = [
-                        {
-                            description: "Portable Document Format",
-                            filename: "internal-pdf-viewer",
-                            name: "Chrome PDF Plugin",
-                            MimeTypes: [{ description: "Portable Document Format", enabledPlugin: true, suffixes: "pdf", type: "application/x-google-chrome-pdf" }]
-                        },
-                        {
-                            description: "",
-                            filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
-                            name: "Chrome PDF Viewer",
-                            MimeTypes: [{ description: "", enabledPlugin: true, suffixes: "pdf", type: "application/pdf" }]
-                        }
-                    ];
-
-                    return Object.setPrototypeOf({
-                        ...Array.from(fakePlugins).reduce((acc, plugin, idx) => {
-                            acc[idx] = plugin;
-                            acc[plugin.name] = plugin;
-                            return acc;
-                        }, {}),
-                        length: fakePlugins.length,
-                    }, PluginArray.prototype);
+        try {
+            // 更细致的User-Agent设置
+            await client.send('Network.setUserAgentOverride', {
+                userAgent: userAgent,
+                acceptLanguage: languages[0],
+                platform: userAgent.includes('Windows') ? 'Windows' : userAgent.includes('Macintosh') ? 'MacOS' : 'Linux',
+                userAgentMetadata: {
+                    brands: [
+                        { brand: 'Chromium', version: '110'},
+                        { brand: 'Not(A:Brand', version: '8'},
+                        { brand: 'Google Chrome', version: '110'}
+                    ],
+                    fullVersion: '110.0.5481.177',
+                    platform: 'Windows',
+                    platformVersion: '10.0.0',
+                    architecture: 'x86',
+                    model: '',
+                    mobile: false
                 }
             });
 
-            // 权限API
-            const originalQuery = window.navigator.permissions.query;
-            window.navigator.permissions.query = (parameters) => (
-                parameters.name === 'notifications' ?
-                    Promise.resolve({ state: Notification.permission }) :
-                    originalQuery(parameters)
-            );
+            // 语言和地区设置
+            await client.send('Emulation.setLocaleOverride', {
+                locale: languages[0]
+            }).catch(() => {}); // 忽略可能的语言设置错误
 
-            // Chrome运行时
-            window.chrome = {
-                runtime: {
-                    PlatformOs: {
-                        MAC: 'mac', WIN: 'win', ANDROID: 'android',
-                        CROS: 'cros', LINUX: 'linux', OPENBSD: 'openbsd',
-                    },
-                    PlatformArch: {
-                        ARM: 'arm',
-                        X86_32: 'x86-32',
-                        X86_64: 'x86-64',
-                    },
-                    PlatformNaclArch: {
-                        ARM: 'arm',
-                        X86_32: 'x86-32',
-                        X86_64: 'x86-64',
-                    },
-                    RequestUpdateCheckStatus: {
-                        THROTTLED: 'throttled',
-                        NO_UPDATE: 'no_update',
-                        UPDATE_AVAILABLE: 'update_available',
-                    }
-                }
-            };
-        });
+            // 时区设置（使用动态时区）
+            const timezones = ['Asia/Shanghai', 'Asia/Tokyo', 'America/New_York', 'Europe/London'];
+            await client.send('Emulation.setTimezoneOverride', {
+                timezoneId: this.#getRandomItem(timezones)
+            }).catch(() => {}); // 忽略可能的时区设置错误
 
-        // 硬件和设备特征
-        await page.evaluateOnNewDocument(() => {
-            Object.defineProperties(navigator, {
-                'deviceMemory': { get: () => 8 },
-                'hardwareConcurrency': { get: () => 8 },
-                'bluetooth': {
-                    get: () => ({
-                        getAvailability: async () => true,
-                        requestDevice: async () => { throw new Error('User cancelled the request.'); }
-                    })
-                },
-                'mediaCapabilities': {
-                    get: () => ({
-                        decodingInfo: async () => ({
-                            supported: true,
-                            smooth: true,
-                            powerEfficient: true
-                        })
-                    })
-                }
-            });
+            // 设备模拟（避免使用setWindowBounds）
+            await client.send('Emulation.setDeviceMetricsOverride', {
+                width: screen.width,
+                height: screen.height,
+                deviceScaleFactor: 1,
+                mobile: false
+            }).catch(() => {}); // 忽略可能的设备模拟错误
 
-            // 电池API
-            navigator.getBattery = async () => ({
-                charging: true,
-                chargingTime: 0,
-                dischargingTime: Infinity,
-                level: 1,
-                addEventListener: () => {},
-                removeEventListener: () => {}
-            });
-
-            // 网络信息
-            Object.defineProperty(navigator, 'connection', {
-                get: () => ({
-                    downlink: 10,
-                    effectiveType: "4g",
-                    onchange: null,
-                    rtt: 50,
-                    saveData: false
-                })
-            });
-        });
-
-        // WebGL保护
-        await page.evaluateOnNewDocument((gpu) => {
-            if (window.WebGLRenderingContext) {
-                const getParameter = WebGLRenderingContext.prototype.getParameter;
-                WebGLRenderingContext.prototype.getParameter = new Proxy(getParameter, {
-                    apply: function(target, ctx, args) {
-                        const param = args[0];
-                        const result = target.apply(ctx, args);
-
-                        if (param === 37445) return gpu.vendor;
-                        if (param === 37446) return gpu.renderer;
-                        return result;
-                    }
-                });
-            }
-        }, gpu);
-
-        // 语言和本地化设置
-        await page.evaluateOnNewDocument((languages) => {
-            Object.defineProperty(navigator, 'languages', { get: () => languages });
-        }, languages);
-
-        // WebRTC保护
-        await page.evaluateOnNewDocument(() => {
-            if (navigator.mediaDevices?.getUserMedia) {
-                const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-                navigator.mediaDevices.getUserMedia = async (constraints) => {
-                    const stream = await originalGetUserMedia(constraints);
-                    if (stream) {
-                        stream.getTracks().forEach(track => {
-                            Object.defineProperties(track, {
-                                'label': { get: () => 'External Device' },
-                                'enabled': { get: () => true }
+            // 使用CDP注入最早期的保护代码
+            await client.send('Page.addScriptToEvaluateOnNewDocument', {
+                source: `
+                    (function() {
+                        // 1. 最早期阻止检测
+                        delete Object.getPrototypeOf(navigator).webdriver;
+                        
+                        // 2. 防止属性检测
+                        const oldDefineProperty = Object.defineProperty;
+                        Object.defineProperty = function(obj, prop, desc) {
+                            if (prop === 'webdriver') {
+                                return obj;
+                            }
+                            return oldDefineProperty(obj, prop, desc);
+                        };
+                        
+                        // 3. 注入错误的检测结果
+                        window.navigator.chrome = {
+                            runtime: {
+                                connect: function() { 
+                                    throw new Error('Extension context invalidated.');
+                                }
+                            }
+                        };
+                        
+                        // 4. 设置随机化的性能API
+                        const originalGetEntries = window.performance.getEntries;
+                        window.performance.getEntries = function() {
+                            const entries = originalGetEntries.apply(this, arguments);
+                            return entries.filter(entry => !entry.name.includes('automation'));
+                        };
+                        
+                        // 5. 创建假的permissions API
+                        const originalQuery = window.navigator.permissions.query;
+                        window.navigator.permissions.query = function(parameters) {
+                            return new Promise((resolve) => {
+                                resolve({ state: "prompt" });
                             });
-                        });
-                    }
-                    return stream;
-                };
+                        };
+                    })();
+                `
+            });
+
+            // 模拟真实的性能指标
+            await client.send('Emulation.setCPUThrottlingRate', { rate: 1 }).catch(() => {});
+            await client.send('Network.enable').catch(() => {});
+            await client.send('Network.emulateNetworkConditions', {
+                offline: false,
+                latency: 20,  // 模拟20ms延迟
+                downloadThroughput: 1024 * 1024 * 10,  // 10 Mbps
+                uploadThroughput: 1024 * 1024 * 5      // 5 Mbps
+            }).catch(() => {});
+
+        } catch (error) {
+            logger.error('CDP覆盖设置失败:', error.message);
+            logger.debug('CDP错误详情:', error);
+            // 不要立即抛出错误，让程序继续运行
+            logger.warn('部分CDP配置失败，但将继续执行');
+        } finally {
+            // 确保重置某些CDP状态
+            try {
+                await client.send('Emulation.clearDeviceMetricsOverride').catch(() => {});
+                await client.send('Emulation.clearGeolocationOverride').catch(() => {});
+            } catch (cleanupError) {
+                logger.warn('CDP清理过程出错:', cleanupError.message);
             }
-        });
+        }
     }
 
     /**
