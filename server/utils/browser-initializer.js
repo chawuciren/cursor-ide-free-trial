@@ -306,7 +306,6 @@ class BrowserInitializer {
                 waitUntil: ['load', 'domcontentloaded', 'networkidle0'],
                 timeout: 60000 
             });
-            await delay(1000000);
 
             // 等待页面完全加载并稳定
             await page.waitForFunction(() => document.readyState === 'complete');
@@ -385,6 +384,7 @@ class BrowserInitializer {
                 waitUntil: 'networkidle0',
                 timeout: 30000
             });
+            await delay(1000000);
             
             await page.waitForSelector('.ellipsis-all', { timeout: 30000 });
             

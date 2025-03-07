@@ -70,6 +70,18 @@ class FingerprintSimulator {
      * @private
      */
     async #injectFingerprintProtection(page) {
+        // 首先注入 Notification API
+        await page.evaluateOnNewDocument(() => {
+            if (typeof Notification === 'undefined') {
+                window.Notification = class Notification {
+                    static get permission() { return 'granted'; }
+                    static requestPermission() { return Promise.resolve('granted'); }
+                    constructor() {}
+                };
+            }
+        });
+
+        // 注入其他保护
         await page.evaluateOnNewDocument(() => {
             this.#protectWebDriver();
             this.#protectChrome();
@@ -79,6 +91,7 @@ class FingerprintSimulator {
             this.#protectWebGL();
             this.#protectImage();
             this.#protectError();
+            this.#protectNavigatorAPI();
         });
     }
 
@@ -563,6 +576,37 @@ class FingerprintSimulator {
                 return new Proxy(error, errorHandler);
             }
         });
+    }
+
+    /**
+     * 保护 Navigator API
+     * @private
+     */
+    #protectNavigatorAPI() {
+        const originalNavigator = navigator;
+        const originalSendBeacon = navigator.sendBeacon;
+        const originalGetUserMedia = navigator.mediaDevices?.getUserMedia;
+
+        // 修复 sendBeacon
+        if (originalSendBeacon) {
+            navigator.sendBeacon = function(url, data) {
+                if (arguments.length === 0) {
+                    throw new TypeError('Failed to execute sendBeacon on Navigator: 1 argument required, but only 0 present.');
+                }
+                return originalSendBeacon.apply(this, arguments);
+            };
+        }
+
+        // 修复 getUserMedia
+        if (navigator.mediaDevices) {
+            navigator.mediaDevices.getUserMedia = function(constraints) {
+                if (arguments.length === 0) {
+                    throw new TypeError('Failed to execute getUserMedia on MediaDevices: 1 argument required, but only 0 present.');
+                }
+                return originalGetUserMedia ? originalGetUserMedia.apply(this, arguments) 
+                    : Promise.reject(new Error('getUserMedia is not supported'));
+            };
+        }
     }
 
     /**
