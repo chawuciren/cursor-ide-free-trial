@@ -4,6 +4,7 @@ node_win32/
 data/
 server/node_modules/
 server/node/
+chrome_win32/
 package-lock.json
 yarn.lock
 server/package-lock.json
