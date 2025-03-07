@@ -4,6 +4,7 @@ const logger = require('./logger');
 const path = require('path');
 const delay = require('./delay');
 const HumanBehavior = require('./human-behavior');
+const FingerprintSimulator = require('./fingerprint-simulator');
 const os = require('os');
 
 // 初始化StealthPlugin
@@ -85,6 +86,7 @@ class BrowserInitializer {
         this.config = config;
         this.retryCount = 0;
         this.humanBehavior = new HumanBehavior();
+        this.fingerprintSimulator = new FingerprintSimulator();
     }
 
     /**
@@ -103,7 +105,7 @@ class BrowserInitializer {
                 const page = await browser.newPage();
 
                 // 重置浏览器指纹
-                await this.humanBehavior.resetBrowserFingerprint(page);
+                await this.fingerprintSimulator.resetFingerprint(page);
                 
                 // 配置扩展
                 // await this.configureExtensions(browser);
@@ -173,7 +175,7 @@ class BrowserInitializer {
                 "--password-store=basic",
                 "--window-size=1920,1080",
                 "--start-maximized",
-                "--disable-gpu",
+                "--disable-gpu-vsync",
                 "--disable-software-rasterizer",
                 "--disable-dev-tools",
                 "--no-default-browser-check",
@@ -200,14 +202,15 @@ class BrowserInitializer {
                 "--disable-zero-browsers-open-for-tests",
                 "--disable-prompt-on-repost",
                 "--disable-setuid-sandbox",
-                "--disable-webgl",
                 "--disable-threaded-animation",
                 "--disable-threaded-scrolling",
                 "--disable-web-security",
                 "--disable-xss-auditor",
                 "--ignore-certificate-errors",
                 "--allow-running-insecure-content",
-                "--disable-permissions-api",
+                "--enable-webgl",
+                "--enable-accelerated-2d-canvas",
+                "--enable-gpu-rasterization",
                 "--disable-automation",
                 `--window-position=${Math.floor(Math.random() * 100)},${Math.floor(Math.random() * 100)}`,
                 `--user-agent=${this.config.browser.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}`
@@ -266,8 +269,8 @@ class BrowserInitializer {
         const fingerprintPage = await browser.newPage();
         
         try {
-            // 先重置检查页面的指纹
-            await this.humanBehavior.resetBrowserFingerprint(fingerprintPage);
+            // 使用 FingerprintSimulator 重置检查页面的指纹
+            await this.fingerprintSimulator.resetFingerprint(fingerprintPage);
             
             // 先使用Intoli进行基础检查
             const intoliCheck = await this._checkIntoliFingerprint(fingerprintPage);
@@ -276,7 +279,7 @@ class BrowserInitializer {
             }
 
             // 重新重置指纹后进行CreepJS检查
-            await this.humanBehavior.resetBrowserFingerprint(fingerprintPage);
+            await this.fingerprintSimulator.resetFingerprint(fingerprintPage);
             const creepjsCheck = await this._checkCreepJSFingerprint(fingerprintPage);
             if (!creepjsCheck.success) {
                 return creepjsCheck;
