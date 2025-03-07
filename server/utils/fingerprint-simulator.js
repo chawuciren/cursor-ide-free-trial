@@ -52,34 +52,235 @@ class FingerprintSimulator {
      */
     generateFingerprint() {
         // 基础版本信息
-        const chromeVersion = '136.0.0.0';
-        const majorVersion = chromeVersion.split('.')[0];
+        const chromeVersion = '113.10.11';  // 使用真实请求中的版本
+        const majorVersion = '113';  // 主版本号
+        const brandVersion = '8';
         const screen = this.#getRandomItem(this.#screenResolutions);
         const languages = this.#getRandomItem(this.#languages);
         const gpu = this.#getRandomItem(this.#gpuVendors);
 
-        // 构建 accept-language
-        const acceptLanguage = `${languages[0]},${languages[1]};q=0.9`;
+        // 构建 accept-language，添加更多权重
+        const acceptLanguage = 'en,zh;q=0.9,zh-TW;q=0.8,en-US;q=0.7,en-GB;q=0.6,zh-CN;q=0.5';
+
+        // 定义一次 userAgent，后续复用
+        const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+
+        // 构建字体列表 - 使用更完整的Windows默认字体
+        const fontList = [
+            // 系统字体
+            'Arial', 'Arial Black', 'Arial Narrow', 'Bahnschrift', 'Calibri', 'Cambria', 
+            'Cambria Math', 'Candara', 'Comic Sans MS', 'Consolas', 'Constantia', 'Corbel',
+            'Courier New', 'Ebrima', 'Franklin Gothic Medium', 'Gabriola', 'Gadugi', 
+            'Georgia', 'HoloLens MDL2 Assets', 'Impact', 'Ink Free', 'Javanese Text',
+            'Leelawadee UI', 'Lucida Console', 'Lucida Sans Unicode', 'Malgun Gothic',
+            'Microsoft Himalaya', 'Microsoft JhengHei', 'Microsoft New Tai Lue',
+            'Microsoft PhagsPa', 'Microsoft Sans Serif', 'Microsoft YaHei', 'MingLiU-ExtB',
+            'Mongolian Baiti', 'MS Gothic', 'MV Boli', 'Myanmar Text', 'Nirmala UI',
+            'Palatino Linotype', 'Segoe MDL2 Assets', 'Segoe Print', 'Segoe Script',
+            'Segoe UI', 'Segoe UI Historic', 'Segoe UI Emoji', 'Segoe UI Symbol',
+            'SimSun', 'Sitka', 'Sylfaen', 'Symbol', 'Tahoma', 'Times New Roman',
+            'Trebuchet MS', 'Verdana', 'Webdings', 'Wingdings', 'Yu Gothic'
+        ].sort();
+
+        // 构建媒体设备
+        const mediaDevices = {
+            audioInputs: [
+                { deviceId: 'default', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            audioOutputs: [
+                { deviceId: 'default', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            videoInputs: []
+        };
+
+        // 构建插件和MIME类型
+        const mimeTypes = [
+            {
+                type: 'application/pdf',
+                suffixes: 'pdf',
+                description: 'Portable Document Format'
+            },
+            {
+                type: 'application/x-google-chrome-pdf',
+                suffixes: 'pdf',
+                description: 'Portable Document Format'
+            },
+            {
+                type: 'application/x-nacl',
+                suffixes: '',
+                description: 'Native Client Executable'
+            },
+            {
+                type: 'application/x-pnacl',
+                suffixes: '',
+                description: 'Portable Native Client Executable'
+            }
+        ];
+
+        const plugins = [
+            {
+                name: 'Chrome PDF Plugin',
+                filename: 'internal-pdf-viewer',
+                description: 'Portable Document Format',
+                mimeTypes: [mimeTypes[0]]
+            },
+            {
+                name: 'Chrome PDF Viewer',
+                filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
+                description: 'Portable Document Format',
+                mimeTypes: [mimeTypes[1]]
+            },
+            {
+                name: 'Native Client',
+                filename: 'internal-nacl-plugin',
+                description: '',
+                mimeTypes: [mimeTypes[2], mimeTypes[3]]
+            }
+        ];
+
+        // 构建语音列表
+        const voices = [
+            {
+                voiceURI: 'Microsoft David - English (United States)',
+                name: 'Microsoft David - English (United States)',
+                lang: 'en-US',
+                localService: true,
+                default: true
+            },
+            {
+                voiceURI: 'Microsoft Zira - English (United States)',
+                name: 'Microsoft Zira - English (United States)',
+                lang: 'en-US',
+                localService: true,
+                default: false
+            },
+            {
+                voiceURI: 'Microsoft Mark - English (United States)',
+                name: 'Microsoft Mark - English (United States)',
+                lang: 'en-US',
+                localService: true,
+                default: false
+            }
+        ];
+
+        // 构建 WebGL 参数
+        const webGLParams = {
+            contextName: 'webgl',
+            version: 'WebGL 1.0',
+            shadingLanguageVersion: 'WebGL GLSL ES 1.0',
+            vendor: gpu.vendor,
+            renderer: gpu.renderer,
+            unmaskedVendor: gpu.vendor,
+            unmaskedRenderer: gpu.renderer,
+            antialias: true,
+            angle: '(NVIDIA, NVIDIA GeForce GTX 1070 Direct3D11 vs_5_0 ps_5_0)',
+            majorPerformanceCaveat: false,
+            params: {
+                antialias: true,
+                alpha: true,
+                depth: true,
+                failIfMajorPerformanceCaveat: false,
+                powerPreference: 'high-performance',
+                premultipliedAlpha: true,
+                preserveDrawingBuffer: false,
+                stencil: true,
+                desynchronized: false,
+                xrCompatible: false
+            },
+            extensions: [
+                'ANGLE_instanced_arrays',
+                'EXT_blend_minmax',
+                'EXT_color_buffer_half_float',
+                'EXT_disjoint_timer_query',
+                'EXT_float_blend',
+                'EXT_frag_depth',
+                'EXT_shader_texture_lod',
+                'EXT_texture_compression_bptc',
+                'EXT_texture_compression_rgtc',
+                'EXT_texture_filter_anisotropic',
+                'OES_element_index_uint',
+                'OES_fbo_render_mipmap',
+                'OES_standard_derivatives',
+                'OES_texture_float',
+                'OES_texture_float_linear',
+                'OES_texture_half_float',
+                'OES_texture_half_float_linear',
+                'OES_vertex_array_object',
+                'WEBGL_color_buffer_float',
+                'WEBGL_compressed_texture_s3tc',
+                'WEBGL_compressed_texture_s3tc_srgb',
+                'WEBGL_debug_renderer_info',
+                'WEBGL_debug_shaders',
+                'WEBGL_depth_texture',
+                'WEBGL_draw_buffers',
+                'WEBGL_lose_context',
+                'WEBGL_multi_draw'
+            ],
+            parameters: {
+                'MAX_TEXTURE_SIZE': 16384,
+                'MAX_VIEWPORT_DIMS': [16384, 16384],
+                'MAX_VERTEX_ATTRIBS': 16,
+                'MAX_VERTEX_UNIFORM_VECTORS': 4096,
+                'MAX_VARYING_VECTORS': 30,
+                'MAX_COMBINED_TEXTURE_IMAGE_UNITS': 32,
+                'MAX_VERTEX_TEXTURE_IMAGE_UNITS': 16,
+                'MAX_TEXTURE_IMAGE_UNITS': 16,
+                'MAX_FRAGMENT_UNIFORM_VECTORS': 1024,
+                'MAX_CUBE_MAP_TEXTURE_SIZE': 16384,
+                'MAX_RENDERBUFFER_SIZE': 16384,
+                'MAX_TEXTURE_MAX_ANISOTROPY_EXT': 16
+            }
+        };
+
+        // 构建 Canvas 参数
+        const canvasParams = {
+            textBaseline: 'alphabetic',
+            textAlign: 'start',
+            font: '10px Arial',
+            fillStyle: '#000000',
+            strokeStyle: '#000000',
+            lineWidth: 1,
+            lineCap: 'butt',
+            lineJoin: 'miter',
+            miterLimit: 10,
+            shadowBlur: 0,
+            shadowColor: 'rgba(0, 0, 0, 0)',
+            shadowOffsetX: 0,
+            shadowOffsetY: 0,
+            globalAlpha: 1,
+            globalCompositeOperation: 'source-over',
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'low'
+        };
 
         return {
             // 浏览器信息
             browser: {
                 version: chromeVersion,
                 majorVersion,
-                userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`,
+                userAgent,
                 brands: [
-                    { brand: 'Not.A/Brand', version: '99' },
+                    { brand: 'Google Chrome', version: majorVersion },
+                    { brand: 'Not=A?Brand', version: brandVersion },
                     { brand: 'Chromium', version: majorVersion }
                 ],
                 acceptLanguage,
-                languages: languages,
-                platform: 'Windows',
+                languages: ['en', 'zh', 'zh-TW', 'en-US', 'en-GB', 'zh-CN'],
+                platform: 'Win32',
                 platformVersion: '10.0.0',
-                architecture: 'x86_64',
+                architecture: 'x64',
                 bitness: '64',
                 wow64: false,
                 mobile: false,
-                model: ''
+                model: '',
+                oscpu: 'Windows NT 10.0; Win64; x64',
+                connectionRtt: 50,
+                deviceMemory: 8,
+                hardwareConcurrency: 8,
+                maxTouchPoints: 0,
+                pdfViewerEnabled: true
             },
 
             // 设备信息
@@ -87,29 +288,48 @@ class FingerprintSimulator {
                 screen: {
                     width: screen.width,
                     height: screen.height,
-                    deviceScaleFactor: 1,
+                    availWidth: screen.width,
+                    availHeight: screen.height - 40,
+                    availTop: 0,
+                    availLeft: 0,
                     colorDepth: 24,
-                    pixelDepth: 24
+                    pixelDepth: 24,
+                    devicePixelRatio: 1,
+                    orientation: {
+                        type: 'landscape-primary',
+                        angle: 0
+                    },
+                    isExtended: false
                 },
                 gpu: {
                     vendor: gpu.vendor,
                     renderer: gpu.renderer
                 },
-                memory: 8,
-                cores: 8,
-                touchPoints: 0
+                mediaDevices: mediaDevices,
+                plugins: plugins,
+                mimeTypes: mimeTypes,
+                fonts: fontList,
+                voices: voices,
+                webgl: webGLParams,
+                canvas: canvasParams
             },
 
             // 网络信息
             network: {
                 type: '4g',
+                effectiveType: '4g',
                 downlink: 10,
+                downlinkMax: 10,
                 rtt: 50,
-                saveData: false
+                saveData: false,
+                onchange: null
             },
 
             // 时区信息
-            timezone: this.#getRandomItem(this.#timezones),
+            timezone: {
+                id: this.#getRandomItem(this.#timezones),
+                offset: -480
+            },
 
             // 电池信息
             battery: {
@@ -122,15 +342,23 @@ class FingerprintSimulator {
             // HTTP 头信息
             headers: {
                 'accept': 'application/json, text/plain, */*',
+                'accept-encoding': 'gzip, deflate, br',
                 'accept-language': acceptLanguage,
+                'cache-control': 'no-cache',
+                'content-type': 'application/json',
                 'origin': 'https://abrahamjuliot.github.io',
+                'pragma': 'no-cache',
                 'referer': 'https://abrahamjuliot.github.io/',
-                'sec-ch-ua': `"Not.A/Brand";v="99", "Chromium";v="${majorVersion}"`,
+                'sec-ch-ua': '"Google Chrome";v="'+majorVersion+'", "Not=A?Brand";v="'+brandVersion+'", "Chromium";v="'+majorVersion+'"',
+                'sec-ch-ua-arch': '"x64"',
+                'sec-ch-ua-bitness': '"64"',
                 'sec-ch-ua-mobile': '?0',
                 'sec-ch-ua-platform': '"Windows"',
+                'sec-ch-ua-platform-version': '"10.0.0"',
                 'sec-fetch-dest': 'empty',
                 'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'cross-site'
+                'sec-fetch-site': 'cross-site',
+                'user-agent': userAgent
             }
         };
     }
@@ -881,7 +1109,7 @@ class FingerprintSimulator {
      */
     async #setTimezone(client, fingerprint) {
         await client.send('Emulation.setTimezoneOverride', {
-            timezoneId: fingerprint.timezone
+            timezoneId: fingerprint.timezone.id
         }).catch(() => {});
     }
 
