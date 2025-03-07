@@ -105,7 +105,8 @@ class BrowserInitializer {
                 const page = await browser.newPage();
 
                 // 重置浏览器指纹
-                await this.fingerprintSimulator.resetFingerprint(page);
+                const fingerprint = await this.fingerprintSimulator.generateFingerprint();
+                await this.fingerprintSimulator.resetFingerprint(page, fingerprint);
                 
                 // 配置扩展
                 // await this.configureExtensions(browser);
@@ -270,7 +271,8 @@ class BrowserInitializer {
         
         try {
             // 使用 FingerprintSimulator 重置检查页面的指纹
-            await this.fingerprintSimulator.resetFingerprint(fingerprintPage);
+            const fingerprint = await this.fingerprintSimulator.generateFingerprint();
+            await this.fingerprintSimulator.resetFingerprint(fingerprintPage, fingerprint);
             
             // 先使用Intoli进行基础检查
             const intoliCheck = await this._checkIntoliFingerprint(fingerprintPage);
@@ -279,7 +281,6 @@ class BrowserInitializer {
             }
 
             // 重新重置指纹后进行CreepJS检查
-            await this.fingerprintSimulator.resetFingerprint(fingerprintPage);
             const creepjsCheck = await this._checkCreepJSFingerprint(fingerprintPage);
             if (!creepjsCheck.success) {
                 return creepjsCheck;

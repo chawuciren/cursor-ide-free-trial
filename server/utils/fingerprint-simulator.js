@@ -47,16 +47,106 @@ class FingerprintSimulator {
     #timezones = ['Asia/Shanghai', 'Asia/Tokyo', 'America/New_York', 'Europe/London'];
 
     /**
+     * 生成指纹数据
+     * @returns {Object} 指纹数据
+     */
+    generateFingerprint() {
+        // 基础版本信息
+        const chromeVersion = '136.0.0.0';
+        const majorVersion = chromeVersion.split('.')[0];
+        const screen = this.#getRandomItem(this.#screenResolutions);
+        const languages = this.#getRandomItem(this.#languages);
+        const gpu = this.#getRandomItem(this.#gpuVendors);
+
+        // 构建 accept-language
+        const acceptLanguage = `${languages[0]},${languages[1]};q=0.9`;
+
+        return {
+            // 浏览器信息
+            browser: {
+                version: chromeVersion,
+                majorVersion,
+                userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`,
+                brands: [
+                    { brand: 'Not.A/Brand', version: '99' },
+                    { brand: 'Chromium', version: majorVersion }
+                ],
+                acceptLanguage,
+                languages: languages,
+                platform: 'Windows',
+                platformVersion: '10.0.0',
+                architecture: 'x86_64',
+                bitness: '64',
+                wow64: false,
+                mobile: false,
+                model: ''
+            },
+
+            // 设备信息
+            device: {
+                screen: {
+                    width: screen.width,
+                    height: screen.height,
+                    deviceScaleFactor: 1,
+                    colorDepth: 24,
+                    pixelDepth: 24
+                },
+                gpu: {
+                    vendor: gpu.vendor,
+                    renderer: gpu.renderer
+                },
+                memory: 8,
+                cores: 8,
+                touchPoints: 0
+            },
+
+            // 网络信息
+            network: {
+                type: '4g',
+                downlink: 10,
+                rtt: 50,
+                saveData: false
+            },
+
+            // 时区信息
+            timezone: this.#getRandomItem(this.#timezones),
+
+            // 电池信息
+            battery: {
+                charging: true,
+                chargingTime: 0,
+                dischargingTime: Infinity,
+                level: 1
+            },
+
+            // HTTP 头信息
+            headers: {
+                'accept': 'application/json, text/plain, */*',
+                'accept-language': acceptLanguage,
+                'origin': 'https://abrahamjuliot.github.io',
+                'referer': 'https://abrahamjuliot.github.io/',
+                'sec-ch-ua': `"Not.A/Brand";v="99", "Chromium";v="${majorVersion}"`,
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'sec-fetch-dest': 'empty',
+                'sec-fetch-mode': 'cors',
+                'sec-fetch-site': 'cross-site'
+            }
+        };
+    }
+
+    /**
      * 重置页面的浏览器指纹
      * @param {import('puppeteer').Page} page Puppeteer页面实例
+     * @param {Object} fingerprint 指纹数据
      */
-    async resetFingerprint(page) {
+    async resetFingerprint(page, fingerprint = this.generateFingerprint()) {
         try {
             logger.info('开始重置浏览器指纹...');
             
             const client = await page.target().createCDPSession();
-            await this.#injectFingerprintProtection(page);
-            await this.#applyCDPOverrides(client);
+            await this.#injectFingerprintProtection(page, fingerprint);
+            await this.#applyCDPOverrides(client, fingerprint);
 
             logger.info('浏览器指纹重置完成');
         } catch (error) {
@@ -69,7 +159,7 @@ class FingerprintSimulator {
      * 注入指纹保护脚本
      * @private
      */
-    async #injectFingerprintProtection(page) {
+    async #injectFingerprintProtection(page, fingerprint) {
         // 注入 Notification API
         await page.evaluateOnNewDocument(() => {
             if (typeof Notification === 'undefined') {
@@ -80,6 +170,63 @@ class FingerprintSimulator {
                 };
             }
         });
+
+        // 注入设备信息
+        await page.evaluateOnNewDocument((fp) => {
+            try {
+                // 添加浏览器特征
+                Object.defineProperties(navigator, {
+                    deviceMemory: {
+                        value: fp.device.memory,
+                        configurable: true,
+                        enumerable: true
+                    },
+                    hardwareConcurrency: {
+                        value: fp.device.cores,
+                        configurable: true,
+                        enumerable: true
+                    },
+                    vendor: {
+                        value: 'Google Inc.',
+                        configurable: true,
+                        enumerable: true
+                    },
+                    platform: {
+                        value: 'Win32',
+                        configurable: true,
+                        enumerable: true
+                    },
+                    maxTouchPoints: {
+                        value: fp.device.touchPoints,
+                        configurable: true,
+                        enumerable: true
+                    }
+                });
+
+                // 添加连接信息模拟
+                if (!navigator.connection) {
+                    Object.defineProperty(navigator, 'connection', {
+                        value: {
+                            effectiveType: fp.network.type,
+                            rtt: fp.network.rtt,
+                            downlink: fp.network.downlink,
+                            saveData: fp.network.saveData
+                        },
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+
+                // 添加电池 API 模拟
+                if (!navigator.getBattery) {
+                    navigator.getBattery = function() {
+                        return Promise.resolve(fp.battery);
+                    };
+                }
+            } catch (e) {
+                // 忽略错误，继续执行
+            }
+        }, fingerprint);
 
         // 注入 WebDriver 保护
         await page.evaluateOnNewDocument(() => {
@@ -492,24 +639,190 @@ class FingerprintSimulator {
                 };
             }
         });
+
+        // 注入 Headers 保护
+        await page.evaluateOnNewDocument((fp) => {
+            try {
+                // 保护 Headers
+                const originalHeaders = window.Headers;
+                window.Headers = class extends originalHeaders {
+                    constructor(init) {
+                        super(init);
+                        if (init && typeof init === 'object') {
+                            // 确保所有请求头与 fingerprint 一致
+                            const headers = {
+                                'accept': fp.headers.accept,
+                                'accept-language': fp.headers['accept-language'],
+                                'origin': fp.headers.origin,
+                                'referer': fp.headers.referer,
+                                'sec-ch-ua': fp.headers['sec-ch-ua'],
+                                'sec-ch-ua-mobile': fp.headers['sec-ch-ua-mobile'],
+                                'sec-ch-ua-platform': fp.headers['sec-ch-ua-platform'],
+                                'sec-fetch-dest': fp.headers['sec-fetch-dest'],
+                                'sec-fetch-mode': fp.headers['sec-fetch-mode'],
+                                'sec-fetch-site': fp.headers['sec-fetch-site'],
+                                'user-agent': fp.browser.userAgent
+                            };
+
+                            // 应用默认请求头
+                            for (const [key, value] of Object.entries(headers)) {
+                                if (value) {
+                                    super.set(key, value);
+                                }
+                            }
+
+                            // 应用自定义请求头
+                            for (const [key, value] of Object.entries(init)) {
+                                if (!headers[key.toLowerCase()] && typeof value === 'string') {
+                                    super.set(key, value);
+                                }
+                            }
+                        }
+                    }
+
+                    append(name, value) {
+                        const lowerName = name.toLowerCase();
+                        // 保护关键请求头
+                        if (lowerName === 'user-agent') {
+                            super.append(name, fp.browser.userAgent);
+                            return;
+                        }
+                        if (lowerName === 'accept-language') {
+                            super.append(name, fp.browser.acceptLanguage);
+                            return;
+                        }
+                        if (fp.headers[lowerName]) {
+                            super.append(name, fp.headers[lowerName]);
+                            return;
+                        }
+                        super.append(name, value);
+                    }
+
+                    set(name, value) {
+                        const lowerName = name.toLowerCase();
+                        // 保护关键请求头
+                        if (lowerName === 'user-agent') {
+                            super.set(name, fp.browser.userAgent);
+                            return;
+                        }
+                        if (lowerName === 'accept-language') {
+                            super.set(name, fp.browser.acceptLanguage);
+                            return;
+                        }
+                        if (fp.headers[lowerName]) {
+                            super.set(name, fp.headers[lowerName]);
+                            return;
+                        }
+                        super.set(name, value);
+                    }
+                };
+
+                // 保护 fetch
+                const originalFetch = window.fetch;
+                window.fetch = function(...args) {
+                    if (args[1] && args[1].headers) {
+                        const headers = new Headers(args[1].headers);
+                        args[1].headers = headers;
+                    } else if (args[1]) {
+                        // 如果没有设置 headers，添加默认 headers
+                        args[1].headers = new Headers({});
+                    } else {
+                        // 如果没有设置 options，添加默认 options 和 headers
+                        args[1] = { headers: new Headers({}) };
+                    }
+                    return originalFetch.apply(this, args);
+                };
+
+                // 保护 XMLHttpRequest
+                const originalXHR = window.XMLHttpRequest;
+                window.XMLHttpRequest = class extends originalXHR {
+                    constructor() {
+                        super();
+                        this._headers = new Headers({});
+                    }
+
+                    setRequestHeader(header, value) {
+                        this._headers.set(header, value);
+                        const lowerHeader = header.toLowerCase();
+                        // 保护关键请求头
+                        if (lowerHeader === 'user-agent') {
+                            super.setRequestHeader(header, fp.browser.userAgent);
+                            return;
+                        }
+                        if (lowerHeader === 'accept-language') {
+                            super.setRequestHeader(header, fp.browser.acceptLanguage);
+                            return;
+                        }
+                        if (fp.headers[lowerHeader]) {
+                            super.setRequestHeader(header, fp.headers[lowerHeader]);
+                            return;
+                        }
+                        super.setRequestHeader(header, value);
+                    }
+
+                    send(data) {
+                        // 确保设置了所有必要的请求头
+                        for (const [key, value] of Object.entries(fp.headers)) {
+                            if (!this._headers.has(key)) {
+                                super.setRequestHeader(key, value);
+                            }
+                        }
+                        super.send(data);
+                    }
+                };
+
+                // 修改 performance.now() 的精度
+                const originalNow = window.performance.now;
+                window.performance.now = function() {
+                    return Math.floor(originalNow.call(performance) * 100) / 100;
+                };
+            } catch (e) {
+                // 忽略错误，继续执行
+            }
+        }, fingerprint);
+
+        // 注入 Storage 保护
+        await page.evaluateOnNewDocument(() => {
+            try {
+                const storage = {
+                    length: 0,
+                    clear: function() {},
+                    getItem: function() { return null; },
+                    key: function() { return null; },
+                    removeItem: function() {},
+                    setItem: function() {}
+                };
+
+                Object.defineProperty(window, 'localStorage', {
+                    value: storage,
+                    configurable: true,
+                    enumerable: true,
+                    writable: true
+                });
+
+                Object.defineProperty(window, 'sessionStorage', {
+                    value: storage,
+                    configurable: true,
+                    enumerable: true,
+                    writable: true
+                });
+            } catch (e) {
+                // 忽略错误，继续执行
+            }
+        });
     }
 
     /**
      * 使用CDP协议设置浏览器特征
      * @private
      */
-    async #applyCDPOverrides(client) {
+    async #applyCDPOverrides(client, fingerprint) {
         try {
-            const userAgent = this.#generateRandomUserAgent();
-            const languages = this.#getRandomItem(this.#languages);
-            const screen = this.#getRandomItem(this.#screenResolutions);
-
-            await this.#setUserAgent(client, userAgent, languages[0]);
-            await this.#setLocale(client, languages[0]);
-            await this.#setTimezone(client);
-            await this.#setDeviceMetrics(client, screen);
+            await this.#setUserAgent(client, fingerprint);
+            await this.#setLocale(client, fingerprint);
+            await this.#setTimezone(client, fingerprint);
+            await this.#setDeviceMetrics(client, fingerprint);
             await this.#setPerformanceMetrics(client);
-
         } catch (error) {
             logger.error('CDP覆盖设置失败:', error.message);
             logger.debug('CDP错误详情:', error);
@@ -521,25 +834,27 @@ class FingerprintSimulator {
      * 设置用户代理
      * @private
      */
-    async #setUserAgent(client, userAgent, language) {
+    async #setUserAgent(client, fingerprint) {
         await client.send('Network.setUserAgentOverride', {
-            userAgent,
-            acceptLanguage: language,
-            platform: userAgent.includes('Windows') ? 'Windows' : 
-                     userAgent.includes('Macintosh') ? 'MacOS' : 'Linux',
+            userAgent: fingerprint.browser.userAgent,
+            acceptLanguage: fingerprint.browser.acceptLanguage,
+            platform: fingerprint.browser.platform,
             userAgentMetadata: {
-                brands: [
-                    { brand: 'Chromium', version: '110' },
-                    { brand: 'Not(A:Brand', version: '8' },
-                    { brand: 'Google Chrome', version: '110' }
-                ],
-                fullVersion: '110.0.5481.177',
-                platform: 'Windows',
-                platformVersion: '10.0.0',
-                architecture: 'x86',
-                model: '',
-                mobile: false
+                brands: fingerprint.browser.brands,
+                fullVersion: fingerprint.browser.version,
+                platform: fingerprint.browser.platform,
+                platformVersion: fingerprint.browser.platformVersion,
+                architecture: fingerprint.browser.architecture,
+                model: fingerprint.browser.model,
+                mobile: fingerprint.browser.mobile,
+                bitness: fingerprint.browser.bitness,
+                wow64: fingerprint.browser.wow64
             }
+        });
+
+        // 设置一致的请求头
+        await client.send('Network.setExtraHTTPHeaders', {
+            headers: fingerprint.headers
         });
     }
 
@@ -547,18 +862,26 @@ class FingerprintSimulator {
      * 设置地区
      * @private
      */
-    async #setLocale(client, locale) {
-        await client.send('Emulation.setLocaleOverride', { locale })
-            .catch(() => {});
+    async #setLocale(client, fingerprint) {
+        const [language, region] = fingerprint.browser.acceptLanguage.split('-');
+        
+        await client.send('Emulation.setLocaleOverride', {
+            locale: fingerprint.browser.acceptLanguage
+        }).catch(() => {});
+
+        await client.send('Emulation.setLanguageEnvironment', {
+            language,
+            region
+        }).catch(() => {});
     }
 
     /**
      * 设置时区
      * @private
      */
-    async #setTimezone(client) {
+    async #setTimezone(client, fingerprint) {
         await client.send('Emulation.setTimezoneOverride', {
-            timezoneId: this.#getRandomItem(this.#timezones)
+            timezoneId: fingerprint.timezone
         }).catch(() => {});
     }
 
@@ -566,12 +889,12 @@ class FingerprintSimulator {
      * 设置设备度量
      * @private
      */
-    async #setDeviceMetrics(client, screen) {
+    async #setDeviceMetrics(client, fingerprint) {
         await client.send('Emulation.setDeviceMetricsOverride', {
-            width: screen.width,
-            height: screen.height,
-            deviceScaleFactor: 1,
-            mobile: false
+            width: fingerprint.device.screen.width,
+            height: fingerprint.device.screen.height,
+            deviceScaleFactor: fingerprint.device.screen.deviceScaleFactor,
+            mobile: fingerprint.browser.mobile
         }).catch(() => {});
     }
 
@@ -589,92 +912,6 @@ class FingerprintSimulator {
             downloadThroughput: 1024 * 1024 * 10,
             uploadThroughput: 1024 * 1024 * 5
         }).catch(() => {});
-    }
-
-    /**
-     * 生成随机用户代理字符串
-     * @private
-     */
-    #generateRandomUserAgent() {
-        const platforms = this.#getPlatformConfigs();
-        const platformKey = this.#getRandomItem(['win', 'mac', 'linux']);
-        const platform = platforms[platformKey];
-
-        const browserConfigs = this.#getBrowserConfigs(platform, platformKey);
-        const selectedBrowser = this.#selectBrowser(browserConfigs);
-
-        return browserConfigs[selectedBrowser].generator();
-    }
-
-    /**
-     * 获取平台配置
-     * @private
-     */
-    #getPlatformConfigs() {
-        return {
-            win: {
-                os: `Windows NT ${this.#getRandomItem(this.#osVersions.win)}; Win64; x64`,
-                webkit: '537.36',
-                chrome: this.#getRandomItem(this.#versions.chrome),
-                firefox: this.#getRandomItem(this.#versions.firefox)
-            },
-            mac: {
-                os: `Macintosh; Intel Mac OS X ${this.#getRandomItem(this.#osVersions.mac)}`,
-                webkit: '537.36',
-                chrome: this.#getRandomItem(this.#versions.chrome),
-                firefox: this.#getRandomItem(this.#versions.firefox),
-                safari: this.#getRandomItem(this.#versions.safari)
-            },
-            linux: {
-                os: `X11; Linux ${this.#getRandomItem(this.#osVersions.linux)}`,
-                webkit: '537.36',
-                chrome: this.#getRandomItem(this.#versions.chrome),
-                firefox: this.#getRandomItem(this.#versions.firefox)
-            }
-        };
-    }
-
-    /**
-     * 获取浏览器配置
-     * @private
-     */
-    #getBrowserConfigs(platform, platformKey) {
-        return {
-            chrome: {
-                weight: 70,
-                generator: () => 
-                    `Mozilla/5.0 (${platform.os}) AppleWebKit/${platform.webkit} ` +
-                    `(KHTML, like Gecko) Chrome/${platform.chrome}.0.0.0 Safari/${platform.webkit}`
-            },
-            firefox: {
-                weight: 20,
-                generator: () => 
-                    `Mozilla/5.0 (${platform.os}; rv:${platform.firefox}.0) ` +
-                    `Gecko/20100101 Firefox/${platform.firefox}.0`
-            },
-            safari: {
-                weight: 10,
-                generator: () => platformKey === 'mac' ? 
-                    `Mozilla/5.0 (${platform.os}) AppleWebKit/605.1.15 ` +
-                    `(KHTML, like Gecko) Version/${platform.safari} Safari/605.1.15` : 
-                    this.#generateRandomUserAgent()
-            }
-        };
-    }
-
-    /**
-     * 选择浏览器
-     * @private
-     */
-    #selectBrowser(browserConfigs) {
-        const totalWeight = Object.values(browserConfigs)
-            .reduce((sum, config) => sum + config.weight, 0);
-        let random = Math.random() * totalWeight;
-
-        for (const [browser, config] of Object.entries(browserConfigs)) {
-            random -= config.weight;
-            if (random <= 0) return browser;
-        }
     }
 
     /**
