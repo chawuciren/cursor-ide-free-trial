@@ -1240,141 +1240,239 @@ class FingerprintSimulator {
                 const originalCreateAnalyser = AudioContext.prototype.createAnalyser;
                 const originalCreateBuffer = AudioContext.prototype.createBuffer;
 
-                // 保护 AnalyserNode
-                const AnalyserHandler = {
-                    construct(target, args) {
-                        const analyser = new target(...args);
-                        return new Proxy(analyser, {
-                            get(target, prop) {
-                                const value = target[prop];
-                                if (typeof value === 'function') {
-                                    return function(...args) {
-                                        // 处理特定方法
-                                        switch(prop) {
-                                            case 'getByteFrequencyData':
-                                            case 'getFloatFrequencyData':
-                                            case 'getByteTimeDomainData':
-                                            case 'getFloatTimeDomainData':
-                                                const result = value.apply(target, args);
-                                                // 确保返回的是正确类型的数组
-                                                if (args[0] instanceof Uint8Array || args[0] instanceof Float32Array) {
-                                                    // 填充一些合理的数据
-                                                    for (let i = 0; i < args[0].length; i++) {
-                                                        args[0][i] = prop.includes('Frequency') ? 
-                                                            Math.sin(i / 10) * 128 + 128 : // 频率数据
-                                                            Math.sin(i / 10) * 127 + 127;  // 时域数据
-                                                    }
-                                                }
-                                                return result;
-                                        }
-                                        return value.apply(target, args);
-                                    };
-                                }
-                                // 处理特定属性
-                                switch(prop) {
-                                    case 'fftSize':
-                                        return 2048;
-                                    case 'frequencyBinCount':
-                                        return 1024;
-                                    case 'minDecibels':
-                                        return -100;
-                                    case 'maxDecibels':
-                                        return -30;
-                                    case 'smoothingTimeConstant':
-                                        return 0.8;
-                                    default:
-                                        return value;
-                                }
+                // 创建一个通用的属性包装器
+                const wrapProperty = (value, propName) => {
+                    if (typeof value === 'number') {
+                        const numObj = new Number(value);
+                        // 确保数值的toString返回与原生一致
+                        Object.defineProperties(numObj, {
+                            toString: {
+                                value: function() { 
+                                    return value.toString();
+                                },
+                                enumerable: false,
+                                writable: true,
+                                configurable: true
                             },
-                            getOwnPropertyDescriptor(target, prop) {
-                                const descriptor = Object.getOwnPropertyDescriptor(target, prop);
-                                if (descriptor) {
-                                    descriptor.configurable = true;
-                                }
-                                return descriptor;
+                            valueOf: {
+                                value: function() {
+                                    return value;
+                                },
+                                enumerable: false,
+                                writable: true,
+                                configurable: true
                             }
                         });
+                        return numObj;
                     }
+                    return value;
+                };
+
+                // 创建一个通用的方法包装器
+                const wrapMethod = (method, name, className) => {
+                    function wrappedMethod(...args) {
+                        const result = method.apply(this, args);
+                        // 如果结果是TypedArray，确保它的toString正确
+                        if (ArrayBuffer.isView(result)) {
+                            Object.defineProperty(result, 'toString', {
+                                value: function() {
+                                    return `[object ${result.constructor.name}]`;
+                                },
+                                enumerable: false,
+                                writable: true,
+                                configurable: true
+                            });
+                        }
+                        return result;
+                    }
+                    
+                    // 设置方法的属性
+                    Object.defineProperties(wrappedMethod, {
+                        name: { value: name, configurable: true },
+                        length: { value: method.length, configurable: true },
+                        toString: {
+                            value: function() {
+                                return `function ${name}() { [native code] }`;
+                            },
+                            enumerable: false,
+                            writable: true,
+                            configurable: true
+                        }
+                    });
+                    
+                    return wrappedMethod;
+                };
+
+                // 创建一个通用的对象包装器
+                const wrapAudioNode = (node, className, properties = {}) => {
+                    const handler = {
+                        get(target, prop) {
+                            // 处理特殊属性
+                            if (prop === Symbol.toStringTag) {
+                                return className;
+                            }
+                            if (prop === 'toString') {
+                                return function() { 
+                                    return `[object ${className}]`; 
+                                };
+                            }
+                            if (prop === 'constructor') {
+                                const constructor = function() {
+                                    throw new TypeError(`Illegal constructor`);
+                                };
+                                Object.defineProperties(constructor, {
+                                    [Symbol.toStringTag]: { value: className },
+                                    toString: {
+                                        value: function() {
+                                            return `function ${className}() { [native code] }`;
+                                        },
+                                        enumerable: false,
+                                        writable: true,
+                                        configurable: true
+                                    }
+                                });
+                                return constructor;
+                            }
+
+                            // 处理属性
+                            if (prop in properties) {
+                                return wrapProperty(properties[prop], prop);
+                            }
+
+                            // 处理方法
+                            const value = target[prop];
+                            if (typeof value === 'function') {
+                                return wrapMethod(value, prop, className);
+                            }
+
+                            return value;
+                        },
+                        getOwnPropertyDescriptor(target, prop) {
+                            if (prop in properties) {
+                                return {
+                                    value: wrapProperty(properties[prop], prop),
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                };
+                            }
+                            const descriptor = Object.getOwnPropertyDescriptor(target, prop);
+                            if (descriptor && typeof descriptor.value === 'function') {
+                                descriptor.value = wrapMethod(descriptor.value, prop, className);
+                            }
+                            return descriptor;
+                        },
+                        ownKeys(target) {
+                            const ownKeys = Reflect.ownKeys(target);
+                            return [...new Set([...Object.keys(properties), ...ownKeys])];
+                        },
+                        has(target, prop) {
+                            return prop in properties || prop in target;
+                        }
+                    };
+
+                    const proxy = new Proxy(node, handler);
+                    Object.setPrototypeOf(proxy, node.constructor.prototype);
+                    return proxy;
+                };
+
+                // 保护 AnalyserNode
+                AudioContext.prototype.createAnalyser = function() {
+                    const analyser = originalCreateAnalyser.call(this);
+                    const properties = {
+                        fftSize: 2048,
+                        frequencyBinCount: 1024,
+                        minDecibels: -100,
+                        maxDecibels: -30,
+                        smoothingTimeConstant: 0.8
+                    };
+
+                    // 包装 getByteFrequencyData 等方法
+                    const originalMethods = {
+                        getByteFrequencyData: analyser.getByteFrequencyData,
+                        getByteTimeDomainData: analyser.getByteTimeDomainData,
+                        getFloatFrequencyData: analyser.getFloatFrequencyData,
+                        getFloatTimeDomainData: analyser.getFloatTimeDomainData
+                    };
+
+                    for (const [methodName, method] of Object.entries(originalMethods)) {
+                        analyser[methodName] = function(array) {
+                            method.call(this, array);
+                            // 确保TypedArray的toString正确
+                            Object.defineProperty(array, 'toString', {
+                                value: function() {
+                                    return `[object ${array.constructor.name}]`;
+                                },
+                                enumerable: false,
+                                writable: true,
+                                configurable: true
+                            });
+                            return undefined;
+                        };
+                    }
+
+                    return wrapAudioNode(analyser, 'AnalyserNode', properties);
                 };
 
                 // 保护 AudioBuffer
-                const AudioBufferHandler = {
-                    construct(target, args) {
-                        const buffer = new target(...args);
-                        return new Proxy(buffer, {
-                            get(target, prop) {
-                                const value = target[prop];
-                                if (typeof value === 'function') {
-                                    return function(...args) {
-                                        switch(prop) {
-                                            case 'getChannelData':
-                                                const channelData = value.apply(target, args);
-                                                // 返回一个代理的 Float32Array
-                                                return new Proxy(channelData, {
-                                                    get(target, prop) {
-                                                        if (prop === 'length') return target.length;
-                                                        if (!isNaN(prop)) {
-                                                            // 为每个采样点生成一个确定性的值
-                                                            return Math.sin(Number(prop) / 100) * 0.5;
-                                                        }
-                                                        return target[prop];
-                                                    }
-                                                });
-                                            case 'copyFromChannel':
-                                            case 'copyToChannel':
-                                                return value.apply(target, args);
-                                            default:
-                                                return value.apply(target, args);
-                                        }
-                                    };
-                                }
-                                return value;
-                            }
+                AudioContext.prototype.createBuffer = function(numChannels, length, sampleRate) {
+                    const buffer = originalCreateBuffer.call(this, numChannels, length, sampleRate);
+                    
+                    // 包装 getChannelData 和 copyFromChannel 方法
+                    const originalGetChannelData = buffer.getChannelData;
+                    buffer.getChannelData = function(channel) {
+                        const array = originalGetChannelData.call(this, channel);
+                        Object.defineProperty(array, 'toString', {
+                            value: function() {
+                                return '[object Float32Array]';
+                            },
+                            enumerable: false,
+                            writable: true,
+                            configurable: true
                         });
-                    }
+                        return array;
+                    };
+
+                    const originalCopyFromChannel = buffer.copyFromChannel;
+                    buffer.copyFromChannel = function(destination, channelNumber, startInChannel) {
+                        originalCopyFromChannel.call(this, destination, channelNumber, startInChannel);
+                        Object.defineProperty(destination, 'toString', {
+                            value: function() {
+                                return '[object Float32Array]';
+                            },
+                            enumerable: false,
+                            writable: true,
+                            configurable: true
+                        });
+                    };
+
+                    return wrapAudioNode(buffer, 'AudioBuffer');
                 };
 
-                // 替换 createAnalyser
-                AudioContext.prototype.createAnalyser = function() {
-                    const analyser = originalCreateAnalyser.apply(this);
-                    return new Proxy(analyser, AnalyserHandler);
+                // 保护 BiquadFilterNode
+                const originalCreateBiquadFilter = AudioContext.prototype.createBiquadFilter;
+                AudioContext.prototype.createBiquadFilter = function() {
+                    const filter = originalCreateBiquadFilter.call(this);
+                    
+                    // 包装 getFrequencyResponse 方法
+                    const originalGetFrequencyResponse = filter.getFrequencyResponse;
+                    filter.getFrequencyResponse = function(frequencyArray, magResponseArray, phaseResponseArray) {
+                        originalGetFrequencyResponse.call(this, frequencyArray, magResponseArray, phaseResponseArray);
+                        // 确保所有TypedArray的toString正确
+                        [frequencyArray, magResponseArray, phaseResponseArray].forEach(array => {
+                            Object.defineProperty(array, 'toString', {
+                                value: function() {
+                                    return `[object ${array.constructor.name}]`;
+                                },
+                                enumerable: false,
+                                writable: true,
+                                configurable: true
+                            });
+                        });
+                    };
+
+                    return wrapAudioNode(filter, 'BiquadFilterNode');
                 };
-
-                // 替换 createBuffer
-                AudioContext.prototype.createBuffer = function(...args) {
-                    const buffer = originalCreateBuffer.apply(this, args);
-                    return new Proxy(buffer, AudioBufferHandler);
-                };
-
-                // 修复 toString
-                const audioProtos = [
-                    window.AnalyserNode,
-                    window.AudioBuffer,
-                    window.AudioContext || window.webkitAudioContext
-                ];
-
-                audioProtos.forEach(proto => {
-                    if (proto) {
-                        for (const prop of Object.getOwnPropertyNames(proto.prototype)) {
-                            const descriptor = Object.getOwnPropertyDescriptor(proto.prototype, prop);
-                            if (descriptor && typeof descriptor.value === 'function') {
-                                const original = descriptor.value;
-                                descriptor.value = function(...args) {
-                                    try {
-                                        return original.apply(this, args);
-                                    } catch (e) {
-                                        // 返回一个合理的默认值
-                                        return undefined;
-                                    }
-                                };
-                                descriptor.value.toString = function() {
-                                    return original.toString();
-                                };
-                                Object.defineProperty(proto.prototype, prop, descriptor);
-                            }
-                        }
-                    }
-                });
             }
         });
     }
