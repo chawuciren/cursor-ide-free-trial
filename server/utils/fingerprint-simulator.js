@@ -70,7 +70,7 @@ class FingerprintSimulator {
      * @private
      */
     async #injectFingerprintProtection(page) {
-        // 首先注入 Notification API
+        // 注入 Notification API
         await page.evaluateOnNewDocument(() => {
             if (typeof Notification === 'undefined') {
                 window.Notification = class Notification {
@@ -81,532 +81,417 @@ class FingerprintSimulator {
             }
         });
 
-        // 注入其他保护
+        // 注入 WebDriver 保护
         await page.evaluateOnNewDocument(() => {
-            this.#protectWebDriver();
-            this.#protectChrome();
-            this.#protectPermissions();
-            this.#protectPlugins();
-            this.#protectLanguages();
-            this.#protectWebGL();
-            this.#protectImage();
-            this.#protectError();
-            this.#protectNavigatorAPI();
-        });
-    }
+            // 删除 webdriver 属性
+            if ('webdriver' in navigator) {
+                Object.defineProperty(Navigator.prototype, 'webdriver', {
+                    get: () => undefined,
+                    configurable: true,
+                    enumerable: true
+                });
+            }
 
-    /**
-     * 保护 WebDriver 相关属性
-     * @private
-     */
-    #protectWebDriver() {
-        delete Object.getPrototypeOf(navigator).webdriver;
-        
-        const originalNavigator = navigator;
-        const navigatorProxy = new Proxy(navigator, {
-            has: (target, key) => key === 'webdriver' ? false : key in target,
-            get: (target, key) => key === 'webdriver' ? undefined : Reflect.get(target, key)
-        });
+            // 清理自动化标记
+            const protectedProps = [
+                'webdriver', '_selenium', 'callSelenium', '_Selenium_IDE_Recorder',
+                '__webdriver_evaluate', '__selenium_evaluate', '__webdriver_script_fn',
+                '__webdriver_script_func', '__webdriver_script_function', '__webdriver',
+                '__webdriver_unwrapped', '__webdriver_script_function', '$chrome_asyncScriptInfo',
+                '$cdc_asdjflasutopfhvcZLmcfl_', 'cdc_adoQpoasnfa76pfcZLmcfl_Array',
+                'cdc_adoQpoasnfa76pfcZLmcfl_Promise', 'cdc_adoQpoasnfa76pfcZLmcfl_Symbol',
+                '_WEBDRIVER_ELEM_CACHE'
+            ];
 
-        Object.defineProperty(window, 'navigator', {
-            value: navigatorProxy,
-            configurable: false,
-            writable: false
-        });
+            const objects = [window, document];
+            for (const object of objects) {
+                for (const prop of protectedProps) {
+                    if (prop in object) {
+                        delete object[prop];
+                        Object.defineProperty(object, prop, {
+                            get: () => undefined,
+                            set: () => false,
+                            configurable: true,
+                            enumerable: false
+                        });
+                    }
+                }
+            }
 
-        const navigatorProto = Object.getPrototypeOf(originalNavigator);
-        Object.defineProperty(navigatorProto, 'webdriver', {
-            get: () => undefined,
-            set: () => false,
-            configurable: false,
-            enumerable: false
-        });
-
-        this.#cleanAutomationFlags();
-    }
-
-    /**
-     * 清理自动化标记
-     * @private
-     */
-    #cleanAutomationFlags() {
-        const protectedProps = [
-            'webdriver', '_selenium', 'callSelenium', '_Selenium_IDE_Recorder',
-            '__webdriver_evaluate', '__selenium_evaluate', '__webdriver_script_fn',
-            '__webdriver_script_func', '__webdriver_script_function', '__webdriver',
-            '__webdriver_unwrapped', '__webdriver_script_function', '$chrome_asyncScriptInfo',
-            '$cdc_asdjflasutopfhvcZLmcfl_', 'cdc_adoQpoasnfa76pfcZLmcfl_Array',
-            'cdc_adoQpoasnfa76pfcZLmcfl_Promise', 'cdc_adoQpoasnfa76pfcZLmcfl_Symbol',
-            '_WEBDRIVER_ELEM_CACHE'
-        ];
-
-        const objects = [window, document, navigator];
-        for (const object of objects) {
-            for (const prop of protectedProps) {
-                if (prop in object) {
-                    delete object[prop];
-                    Object.defineProperty(object, prop, {
+            for (const key in window) {
+                if (key.match(/driver|webdriver|selenium/gi)) {
+                    delete window[key];
+                    Object.defineProperty(window, key, {
                         get: () => undefined,
                         set: () => false,
-                        configurable: false,
+                        configurable: true,
                         enumerable: false
                     });
                 }
             }
-        }
-
-        for (const key in window) {
-            if (key.match(/driver|webdriver|selenium/gi)) {
-                delete window[key];
-                Object.defineProperty(window, key, {
-                    get: () => undefined,
-                    set: () => false,
-                    configurable: false,
-                    enumerable: false
-                });
-            }
-        }
-    }
-
-    /**
-     * 保护 Chrome 相关属性
-     * @private
-     */
-    #protectChrome() {
-        const chromeObj = this.#createChromeObject();
-        const chromeHandler = {
-            get: (target, property) => {
-                if (property in target) {
-                    const value = target[property];
-                    return typeof value === 'object' && value !== null ?
-                        new Proxy(value, chromeHandler) : value;
-                }
-                return undefined;
-            },
-            has: (target, property) => property in target
-        };
-
-        Object.defineProperty(window, 'chrome', {
-            value: new Proxy(chromeObj, chromeHandler),
-            configurable: false,
-            writable: false,
-            enumerable: true
         });
-    }
 
-    /**
-     * 创建 Chrome 对象
-     * @private
-     */
-    #createChromeObject() {
-        return {
-            app: {
-                isInstalled: false,
-                InstallState: {
-                    DISABLED: 'disabled',
-                    INSTALLED: 'installed',
-                    NOT_INSTALLED: 'not_installed'
-                },
-                RunningState: {
-                    CANNOT_RUN: 'cannot_run',
-                    READY_TO_RUN: 'ready_to_run',
-                    RUNNING: 'running'
-                },
-                getDetails: () => ({}),
-                getIsInstalled: () => false,
-                installState: () => 'not_installed',
-                runningState: () => 'cannot_run'
-            },
-            runtime: {
-                PlatformOs: {
-                    MAC: 'mac',
-                    WIN: 'win',
-                    ANDROID: 'android',
-                    CROS: 'cros',
-                    LINUX: 'linux',
-                    OPENBSD: 'openbsd'
-                },
-                PlatformArch: {
-                    ARM: 'arm',
-                    X86_32: 'x86-32',
-                    X86_64: 'x86-64'
-                },
-                RequestUpdateCheckStatus: {
-                    THROTTLED: 'throttled',
-                    NO_UPDATE: 'no_update',
-                    UPDATE_AVAILABLE: 'update_available'
-                },
-                OnInstalledReason: {
-                    INSTALL: 'install',
-                    UPDATE: 'update',
-                    CHROME_UPDATE: 'chrome_update',
-                    SHARED_MODULE_UPDATE: 'shared_module_update'
-                },
-                OnRestartRequiredReason: {
-                    APP_UPDATE: 'app_update',
-                    OS_UPDATE: 'os_update',
-                    PERIODIC: 'periodic'
-                },
-                connect: () => { throw new Error('Extension context invalidated.'); },
-                sendMessage: () => Promise.resolve()
-            },
-            csi: () => ({}),
-            loadTimes: () => ({})
-        };
-    }
+        // 注入 Chrome 保护
+        await page.evaluateOnNewDocument(() => {
+            try {
+                const chromeObj = {
+                    app: {
+                        isInstalled: false,
+                        InstallState: {
+                            DISABLED: 'disabled',
+                            INSTALLED: 'installed',
+                            NOT_INSTALLED: 'not_installed'
+                        },
+                        RunningState: {
+                            CANNOT_RUN: 'cannot_run',
+                            READY_TO_RUN: 'ready_to_run',
+                            RUNNING: 'running'
+                        },
+                        getDetails: () => ({}),
+                        getIsInstalled: () => false,
+                        installState: () => 'not_installed',
+                        runningState: () => 'cannot_run'
+                    },
+                    runtime: {
+                        PlatformOs: {
+                            MAC: 'mac',
+                            WIN: 'win',
+                            ANDROID: 'android',
+                            CROS: 'cros',
+                            LINUX: 'linux',
+                            OPENBSD: 'openbsd'
+                        },
+                        PlatformArch: {
+                            ARM: 'arm',
+                            X86_32: 'x86-32',
+                            X86_64: 'x86-64'
+                        },
+                        RequestUpdateCheckStatus: {
+                            THROTTLED: 'throttled',
+                            NO_UPDATE: 'no_update',
+                            UPDATE_AVAILABLE: 'update_available'
+                        },
+                        OnInstalledReason: {
+                            INSTALL: 'install',
+                            UPDATE: 'update',
+                            CHROME_UPDATE: 'chrome_update',
+                            SHARED_MODULE_UPDATE: 'shared_module_update'
+                        },
+                        OnRestartRequiredReason: {
+                            APP_UPDATE: 'app_update',
+                            OS_UPDATE: 'os_update',
+                            PERIODIC: 'periodic'
+                        },
+                        connect: () => { throw new Error('Extension context invalidated.'); },
+                        sendMessage: () => Promise.resolve()
+                    },
+                    csi: () => ({}),
+                    loadTimes: () => ({})
+                };
 
-    /**
-     * 保护 Permissions API
-     * @private
-     */
-    #protectPermissions() {
-        const permissionsHandler = {
-            query: async (parameters) => {
-                const permissionStatus = {
-                    state: 'granted',
-                    onchange: null,
-                    addEventListener: function(type, listener) {
-                        if (type !== 'change') return;
-                        this._listeners = this._listeners || [];
-                        this._listeners.push(listener);
-                    },
-                    removeEventListener: function(type, listener) {
-                        if (type !== 'change') return;
-                        const index = this._listeners?.indexOf(listener);
-                        if (index > -1) this._listeners.splice(index, 1);
-                    },
-                    dispatchEvent: function(event) {
-                        if (this._listeners) {
-                            this._listeners.forEach(listener => listener(event));
+                const chromeHandler = {
+                    get: (target, property) => {
+                        if (property in target) {
+                            const value = target[property];
+                            return typeof value === 'object' && value !== null ?
+                                new Proxy(value, chromeHandler) : value;
                         }
-                        return true;
+                        return undefined;
+                    },
+                    has: (target, property) => property in target
+                };
+
+                // 只在chrome未定义时才创建
+                if (!window.chrome) {
+                    Object.defineProperty(window, 'chrome', {
+                        value: new Proxy(chromeObj, chromeHandler),
+                        enumerable: true,
+                        writable: true,
+                        configurable: true
+                    });
+                }
+            } catch (e) {
+                // 忽略错误，继续执行
+            }
+        });
+
+        // 注入 Permissions 保护
+        await page.evaluateOnNewDocument(() => {
+            try {
+                const permissionsHandler = {
+                    query: async (parameters) => {
+                        const permissionStatus = {
+                            state: 'granted',
+                            onchange: null,
+                            addEventListener: function(type, listener) {
+                                if (type !== 'change') return;
+                                this._listeners = this._listeners || [];
+                                this._listeners.push(listener);
+                            },
+                            removeEventListener: function(type, listener) {
+                                if (type !== 'change') return;
+                                const index = this._listeners?.indexOf(listener);
+                                if (index > -1) this._listeners.splice(index, 1);
+                            },
+                            dispatchEvent: function(event) {
+                                if (this._listeners) {
+                                    this._listeners.forEach(listener => listener(event));
+                                }
+                                return true;
+                            }
+                        };
+                        return Promise.resolve(permissionStatus);
                     }
                 };
 
-                switch (parameters.name) {
-                    case 'notifications':
-                    case 'push':
-                    case 'midi':
-                    case 'camera':
-                    case 'microphone':
-                    case 'background-sync':
-                    case 'persistent-storage':
-                    case 'ambient-light-sensor':
-                    case 'accelerometer':
-                    case 'gyroscope':
-                    case 'magnetometer':
-                        permissionStatus.state = 'granted';
-                        break;
-                    case 'clipboard-read':
-                    case 'clipboard-write':
-                        permissionStatus.state = 'granted';
-                        break;
-                    case 'geolocation':
-                        permissionStatus.state = 'granted';
-                        break;
-                    default:
-                        permissionStatus.state = 'granted';
+                // 检查permissions是否可配置
+                const descriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'permissions');
+                if (!descriptor || descriptor.configurable) {
+                    Object.defineProperty(Navigator.prototype, 'permissions', {
+                        value: permissionsHandler,
+                        enumerable: true,
+                        writable: true,
+                        configurable: true
+                    });
                 }
-
-                return Promise.resolve(permissionStatus);
+            } catch (e) {
+                // 忽略错误，继续执行
             }
-        };
-
-        if (navigator.permissions) {
-            Object.defineProperty(navigator, 'permissions', {
-                value: permissionsHandler,
-                configurable: false,
-                enumerable: true,
-                writable: false
-            });
-        } else {
-            const desc = Object.getOwnPropertyDescriptor(Navigator.prototype, 'permissions') || {
-                enumerable: true,
-                configurable: true,
-            };
-            Object.defineProperty(Navigator.prototype, 'permissions', {
-                ...desc,
-                value: permissionsHandler,
-                writable: false,
-                configurable: false,
-            });
-        }
-    }
-
-    /**
-     * 保护 Plugins API
-     * @private
-     */
-    #protectPlugins() {
-        const plugins = this.#createPluginsList();
-        const pluginArray = this.#createPluginArray(plugins);
-
-        Object.defineProperty(navigator, 'plugins', {
-            get: () => pluginArray,
-            enumerable: true,
-            configurable: false
-        });
-    }
-
-    /**
-     * 创建插件列表
-     * @private
-     */
-    #createPluginsList() {
-        return [
-            {
-                0: {
-                    type: 'application/x-google-chrome-pdf',
-                    suffixes: 'pdf',
-                    description: 'Portable Document Format',
-                    enabledPlugin: true,
-                    __proto__: Plugin.prototype
-                },
-                name: 'Chrome PDF Plugin',
-                filename: 'internal-pdf-viewer',
-                description: 'Portable Document Format',
-                length: 1,
-                __proto__: Plugin.prototype
-            },
-            {
-                0: {
-                    type: 'application/pdf',
-                    suffixes: 'pdf',
-                    description: '',
-                    enabledPlugin: true,
-                    __proto__: Plugin.prototype
-                },
-                name: 'Chrome PDF Viewer',
-                filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
-                description: '',
-                length: 1,
-                __proto__: Plugin.prototype
-            },
-            {
-                0: {
-                    type: 'application/x-nacl',
-                    suffixes: '',
-                    description: 'Native Client Executable',
-                    enabledPlugin: true,
-                    __proto__: Plugin.prototype
-                },
-                1: {
-                    type: 'application/x-pnacl',
-                    suffixes: '',
-                    description: 'Portable Native Client Executable',
-                    enabledPlugin: true,
-                    __proto__: Plugin.prototype
-                },
-                name: 'Native Client',
-                filename: 'internal-nacl-plugin',
-                description: '',
-                length: 2,
-                __proto__: Plugin.prototype
-            }
-        ];
-    }
-
-    /**
-     * 创建 PluginArray 对象
-     * @private
-     */
-    #createPluginArray(plugins) {
-        const pluginArray = Object.create(PluginArray.prototype);
-        
-        plugins.forEach((plugin, index) => {
-            Object.defineProperty(pluginArray, index, {
-                value: plugin,
-                enumerable: true,
-                writable: false,
-                configurable: true
-            });
-            Object.defineProperty(pluginArray, plugin.name, {
-                value: plugin,
-                enumerable: false,
-                writable: false,
-                configurable: true
-            });
         });
 
-        Object.defineProperty(pluginArray, 'length', {
-            value: plugins.length,
-            enumerable: true,
-            writable: false,
-            configurable: true
-        });
+        // 注入 Plugins 保护
+        await page.evaluateOnNewDocument(() => {
+            try {
+                const plugins = [
+                    {
+                        0: {
+                            type: 'application/x-google-chrome-pdf',
+                            suffixes: 'pdf',
+                            description: 'Portable Document Format',
+                            enabledPlugin: true,
+                            __proto__: Plugin.prototype
+                        },
+                        name: 'Chrome PDF Plugin',
+                        filename: 'internal-pdf-viewer',
+                        description: 'Portable Document Format',
+                        length: 1,
+                        __proto__: Plugin.prototype
+                    },
+                    {
+                        0: {
+                            type: 'application/pdf',
+                            suffixes: 'pdf',
+                            description: '',
+                            enabledPlugin: true,
+                            __proto__: Plugin.prototype
+                        },
+                        name: 'Chrome PDF Viewer',
+                        filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
+                        description: '',
+                        length: 1,
+                        __proto__: Plugin.prototype
+                    }
+                ];
 
-        pluginArray.item = function(index) { return this[index]; };
-        pluginArray.namedItem = function(name) { return this[name]; };
-        pluginArray.refresh = function() {};
-
-        return pluginArray;
-    }
-
-    /**
-     * 保护 Languages API
-     * @private
-     */
-    #protectLanguages() {
-        const languageList = ['en-US', 'en', 'en-GB'];
-        Object.defineProperty(navigator, 'languages', {
-            get: () => Object.freeze([...languageList]),
-            enumerable: true,
-            configurable: false
-        });
-
-        Object.defineProperty(navigator, 'language', {
-            get: () => languageList[0],
-            enumerable: true,
-            configurable: false
-        });
-    }
-
-    /**
-     * 保护 WebGL API
-     * @private
-     */
-    #protectWebGL() {
-        if (!window.WebGLRenderingContext) return;
-
-        const originalGetContext = HTMLCanvasElement.prototype.getContext;
-        const self = this;
-        HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes) {
-            const gl = originalGetContext.call(this, contextType, {
-                ...contextAttributes,
-                preserveDrawingBuffer: true
-            });
-
-            if (gl && (contextType === 'webgl' || contextType === 'experimental-webgl')) {
-                self.#enhanceWebGLContext(gl);
-            }
-            return gl;
-        };
-    }
-
-    /**
-     * 增强 WebGL 上下文
-     * @private
-     */
-    #enhanceWebGLContext(gl) {
-        const getParameter = gl.getParameter.bind(gl);
-        const gpu = this.#getRandomItem(this.#gpuVendors);
-
-        gl.getParameter = function(parameter) {
-            const vendorInfo = {
-                [37445]: gpu.vendor,
-                [37446]: gpu.renderer,
-                [7936]: 'WebKit',
-                [7937]: 'WebKit WebGL',
-                [7938]: 'WebGL 1.0 (OpenGL ES 2.0 Chromium)',
-                [35724]: 'WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)',
-                [3379]: 16384,
-                [3386]: 32,
-                [3410]: 8,
-                [3411]: 8,
-                [3412]: 8,
-                [3413]: 8,
-                [3414]: 8,
-                [3415]: 24,
-                [3416]: 8
-            };
-
-            return parameter in vendorInfo ? 
-                vendorInfo[parameter] : 
-                getParameter(parameter);
-        };
-
-        const debugInfo = {
-            UNMASKED_VENDOR_WEBGL: 37445,
-            UNMASKED_RENDERER_WEBGL: 37446
-        };
-        
-        const originalGetExtension = gl.getExtension.bind(gl);
-        gl.getExtension = function(name) {
-            return name === 'WEBGL_debug_renderer_info' ?
-                debugInfo : originalGetExtension(name);
-        };
-    }
-
-    /**
-     * 保护 Image API
-     * @private
-     */
-    #protectImage() {
-        const originalImage = window.Image;
-        window.Image = function(width, height) {
-            const image = new originalImage(width, height);
-            if (width === 16 && height === 16) {
-                Object.defineProperty(image, 'width', {
-                    get: () => 16,
-                    set: () => {},
-                    configurable: false
+                const pluginArray = Object.create(PluginArray.prototype);
+                
+                plugins.forEach((plugin, index) => {
+                    Object.defineProperty(pluginArray, index, {
+                        value: plugin,
+                        enumerable: true,
+                        writable: true,
+                        configurable: true
+                    });
+                    Object.defineProperty(pluginArray, plugin.name, {
+                        value: plugin,
+                        enumerable: false,
+                        writable: true,
+                        configurable: true
+                    });
                 });
-                Object.defineProperty(image, 'height', {
-                    get: () => 16,
-                    set: () => {},
-                    configurable: false
+
+                Object.defineProperty(pluginArray, 'length', {
+                    value: plugins.length,
+                    enumerable: true,
+                    writable: true,
+                    configurable: true
                 });
-            }
-            return image;
-        };
-        window.Image.prototype = originalImage.prototype;
-        window.Image.prototype.constructor = window.Image;
-    }
 
-    /**
-     * 保护 Error API
-     * @private
-     */
-    #protectError() {
-        const errorHandler = {
-            get(target, property) {
-                if (property === 'stack') {
-                    return target[property].replace(
-                        /\n.*?(puppeteer|webdriver|selenium|driver).*$/gm,
-                        ''
-                    );
+                pluginArray.item = function(index) { return this[index]; };
+                pluginArray.namedItem = function(name) { return this[name]; };
+                pluginArray.refresh = function() {};
+
+                // 检查plugins是否可配置
+                const descriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'plugins');
+                if (!descriptor || descriptor.configurable) {
+                    Object.defineProperty(Navigator.prototype, 'plugins', {
+                        get: () => pluginArray,
+                        enumerable: true,
+                        configurable: true
+                    });
                 }
-                return target[property];
-            }
-        };
-
-        window.Error = new Proxy(Error, {
-            construct(target, args) {
-                const error = new target(...args);
-                return new Proxy(error, errorHandler);
+            } catch (e) {
+                // 忽略错误，继续执行
             }
         });
-    }
 
-    /**
-     * 保护 Navigator API
-     * @private
-     */
-    #protectNavigatorAPI() {
-        const originalNavigator = navigator;
-        const originalSendBeacon = navigator.sendBeacon;
-        const originalGetUserMedia = navigator.mediaDevices?.getUserMedia;
-
-        // 修复 sendBeacon
-        if (originalSendBeacon) {
-            navigator.sendBeacon = function(url, data) {
-                if (arguments.length === 0) {
-                    throw new TypeError('Failed to execute sendBeacon on Navigator: 1 argument required, but only 0 present.');
+        // 注入 Languages 保护
+        await page.evaluateOnNewDocument(() => {
+            try {
+                const languageList = ['en-US', 'en', 'en-GB'];
+                
+                // 检查languages是否可配置
+                const languagesDescriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'languages');
+                if (!languagesDescriptor || languagesDescriptor.configurable) {
+                    Object.defineProperty(Navigator.prototype, 'languages', {
+                        get: () => Object.freeze([...languageList]),
+                        enumerable: true,
+                        configurable: true
+                    });
                 }
-                return originalSendBeacon.apply(this, arguments);
-            };
-        }
 
-        // 修复 getUserMedia
-        if (navigator.mediaDevices) {
-            navigator.mediaDevices.getUserMedia = function(constraints) {
-                if (arguments.length === 0) {
-                    throw new TypeError('Failed to execute getUserMedia on MediaDevices: 1 argument required, but only 0 present.');
+                // 检查language是否可配置
+                const languageDescriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'language');
+                if (!languageDescriptor || languageDescriptor.configurable) {
+                    Object.defineProperty(Navigator.prototype, 'language', {
+                        get: () => languageList[0],
+                        enumerable: true,
+                        configurable: true
+                    });
                 }
-                return originalGetUserMedia ? originalGetUserMedia.apply(this, arguments) 
-                    : Promise.reject(new Error('getUserMedia is not supported'));
+            } catch (e) {
+                // 忽略错误，继续执行
+            }
+        });
+
+        // 注入 WebGL 保护
+        await page.evaluateOnNewDocument(() => {
+            if (!window.WebGLRenderingContext) return;
+
+            const originalGetContext = HTMLCanvasElement.prototype.getContext;
+            HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes) {
+                const gl = originalGetContext.call(this, contextType, {
+                    ...contextAttributes,
+                    preserveDrawingBuffer: true
+                });
+
+                if (gl && (contextType === 'webgl' || contextType === 'experimental-webgl')) {
+                    const getParameter = gl.getParameter.bind(gl);
+                    gl.getParameter = function(parameter) {
+                        const vendorInfo = {
+                            [37445]: 'Google Inc. (NVIDIA)',
+                            [37446]: 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1070 Direct3D11 vs_5_0 ps_5_0)',
+                            [7936]: 'WebKit',
+                            [7937]: 'WebKit WebGL',
+                            [7938]: 'WebGL 1.0 (OpenGL ES 2.0 Chromium)',
+                            [35724]: 'WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)',
+                            [3379]: 16384,
+                            [3386]: 32,
+                            [3410]: 8,
+                            [3411]: 8,
+                            [3412]: 8,
+                            [3413]: 8,
+                            [3414]: 8,
+                            [3415]: 24,
+                            [3416]: 8
+                        };
+
+                        return parameter in vendorInfo ? 
+                            vendorInfo[parameter] : 
+                            getParameter(parameter);
+                    };
+
+                    const debugInfo = {
+                        UNMASKED_VENDOR_WEBGL: 37445,
+                        UNMASKED_RENDERER_WEBGL: 37446
+                    };
+                    
+                    const originalGetExtension = gl.getExtension.bind(gl);
+                    gl.getExtension = function(name) {
+                        return name === 'WEBGL_debug_renderer_info' ?
+                            debugInfo : originalGetExtension(name);
+                    };
+                }
+                return gl;
             };
-        }
+        });
+
+        // 注入 Image 保护
+        await page.evaluateOnNewDocument(() => {
+            const originalImage = window.Image;
+            window.Image = function(width, height) {
+                const image = new originalImage(width, height);
+                if (width === 16 && height === 16) {
+                    Object.defineProperty(image, 'width', {
+                        get: () => 16,
+                        set: () => {},
+                        configurable: false
+                    });
+                    Object.defineProperty(image, 'height', {
+                        get: () => 16,
+                        set: () => {},
+                        configurable: false
+                    });
+                }
+                return image;
+            };
+            window.Image.prototype = originalImage.prototype;
+            window.Image.prototype.constructor = window.Image;
+        });
+
+        // 注入 Error 保护
+        await page.evaluateOnNewDocument(() => {
+            const errorHandler = {
+                get(target, property) {
+                    if (property === 'stack') {
+                        return target[property].replace(
+                            /\n.*?(puppeteer|webdriver|selenium|driver).*$/gm,
+                            ''
+                        );
+                    }
+                    return target[property];
+                }
+            };
+
+            window.Error = new Proxy(Error, {
+                construct(target, args) {
+                    const error = new target(...args);
+                    return new Proxy(error, errorHandler);
+                }
+            });
+        });
+
+        // 注入 Navigator API 保护
+        await page.evaluateOnNewDocument(() => {
+            const originalSendBeacon = navigator.sendBeacon;
+            const originalGetUserMedia = navigator.mediaDevices?.getUserMedia;
+            const originalGetBattery = navigator.getBattery;
+
+            if (originalSendBeacon) {
+                navigator.sendBeacon = function(url, data) {
+                    if (arguments.length === 0) {
+                        throw new TypeError('Failed to execute sendBeacon on Navigator: 1 argument required, but only 0 present.');
+                    }
+                    return originalSendBeacon.apply(navigator, arguments);
+                };
+            }
+
+            if (navigator.mediaDevices) {
+                navigator.mediaDevices.getUserMedia = function(constraints) {
+                    if (arguments.length === 0) {
+                        throw new TypeError('Failed to execute getUserMedia on MediaDevices: 1 argument required, but only 0 present.');
+                    }
+                    return originalGetUserMedia ? originalGetUserMedia.apply(navigator.mediaDevices, arguments) 
+                        : Promise.reject(new Error('getUserMedia is not supported'));
+                };
+            }
+
+            if (originalGetBattery) {
+                navigator.getBattery = function() {
+                    return originalGetBattery.apply(navigator);
+                };
+            }
+        });
     }
 
     /**
