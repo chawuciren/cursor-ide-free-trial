@@ -213,8 +213,17 @@ class BrowserInitializer {
                 "--enable-accelerated-2d-canvas",
                 "--enable-gpu-rasterization",
                 "--disable-automation",
+                "--allow-insecure-localhost",
+                "--allow-file-access-from-files",
+                "--enable-local-file-accesses",
+                "--disable-extensions-http-throttling",
+                "--disable-extensions-file-access-check",
+                "--allow-legacy-extension-manifests",
+                "--extensions-on-chrome-urls",
                 `--window-position=${Math.floor(Math.random() * 100)},${Math.floor(Math.random() * 100)}`,
-                `--user-agent=${this.config.browser.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}`
+                `--user-agent=${this.config.browser.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}`,
+                // `--disable-extensions-except=${extensionPath}`,
+                // `--load-extension=${extensionPath}`
             ],
             defaultViewport: null,
             ignoreDefaultArgs: [
