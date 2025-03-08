@@ -1,31 +1,10 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const puppeteer = require('puppeteer');
 const logger = require('./logger');
 const path = require('path');
 const delay = require('./delay');
 const HumanBehavior = require('./human-behavior');
 const FingerprintSimulator = require('./fingerprint-simulator');
 const os = require('os');
-
-// 初始化StealthPlugin
-puppeteer.use(
-    StealthPlugin({
-        enabledEvasions: new Set([
-            'chrome.app',
-            'chrome.runtime',
-            'iframe.contentWindow',
-            'media.codecs',
-            'navigator.hardwareConcurrency',
-            'navigator.languages',
-            'navigator.permissions',
-            'navigator.plugins',
-            'navigator.webdriver',
-            'navigator.vendor',
-            'webgl.vendor',
-            'window.outerdimensions'
-        ])
-    })
-);
 
 // 浏览器扩展配置
 const EXTENSIONS = {
@@ -157,84 +136,34 @@ class BrowserInitializer {
 
         const launchOptions = {
             headless: this.config.browser.headless ? "new" : false,
-            executablePath: getChromePath(),
+            // executablePath: getChromePath(),
             args: [
                 "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-web-security",
-                "--disable-features=IsolateOrigins,site-per-process,Translate",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-site-isolation-trials",
-                "--disable-background-timer-throttling",
-                "--disable-backgrounding-occluded-windows",
-                "--disable-renderer-backgrounding",
-                "--disable-features=Autofill,AutofillServerCommunication",
-                "--enable-features=NetworkService,NetworkServiceInProcess",
-                "--disable-blink-features",
-                "--disable-notifications",
                 "--no-first-run",
-                "--password-store=basic",
-                "--window-size=1920,1080",
-                "--start-maximized",
-                "--disable-gpu-vsync",
-                "--disable-software-rasterizer",
-                "--disable-dev-tools",
                 "--no-default-browser-check",
-                "--disable-sync",
-                "--disable-prompt-on-repost",
-                "--disable-domain-reliability",
-                "--disable-client-side-phishing-detection",
-                "--disable-component-update",
-                "--disable-breakpad",
-                "--disable-background-networking",
-                "--disable-default-apps",
-                "--disable-dinosaur-easter-egg",
-                "--disable-hang-monitor",
-                "--disable-popup-blocking",
-                "--disable-print-preview",
-                "--disable-metrics",
-                "--disable-speech-api",
-                "--disable-voice-input",
-                "--disable-wake-on-wifi",
-                "--disable-partial-raster",
-                "--metrics-recording-only",
-                "--use-mock-keychain",
-                "--force-color-profile=srgb",
-                "--disable-zero-browsers-open-for-tests",
-                "--disable-prompt-on-repost",
-                "--disable-setuid-sandbox",
-                "--disable-threaded-animation",
-                "--disable-threaded-scrolling",
-                "--disable-web-security",
-                "--disable-xss-auditor",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-features=IsolateOrigins",
+                "--disable-site-isolation-trials",
+                // "--disable-features=BlockInsecurePrivateNetworkRequests",
+                // "--disable-web-security",
+                "--disable-infobars",
+                "--window-position=0,0",
                 "--ignore-certificate-errors",
-                "--allow-running-insecure-content",
-                "--enable-webgl",
-                "--enable-accelerated-2d-canvas",
-                "--enable-gpu-rasterization",
-                "--disable-automation",
-                "--allow-insecure-localhost",
-                "--allow-file-access-from-files",
-                "--enable-local-file-accesses",
-                "--disable-extensions-http-throttling",
-                "--disable-extensions-file-access-check",
-                "--allow-legacy-extension-manifests",
-                "--extensions-on-chrome-urls",
-                `--window-position=${Math.floor(Math.random() * 100)},${Math.floor(Math.random() * 100)}`,
-                `--user-agent=${this.config.browser.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}`,
-                // `--disable-extensions-except=${extensionPath}`,
-                // `--load-extension=${extensionPath}`
+                "--ignore-certificate-errors-spki-list",
             ],
             defaultViewport: null,
             ignoreDefaultArgs: [
                 "--enable-automation",
                 "--enable-blink-features=AutomationControlled",
-                "--enable-blink-features=IdleDetection",
-                "--enable-logging",
-                "about:blank",
-                "--headless=new"
+                "--enable-logging"
             ],
-            ignoreHTTPSErrors: true
+            ignoreHTTPSErrors: true,
+            protocolTimeout: 0,
+            timeout: 0,
+            devtools: !this.config.browser.headless,
+            handleSIGINT: false,
+            handleSIGTERM: false,
+            handleSIGHUP: false
         };
 
         // 如果找不到指定的Chrome路径，移除executablePath选项

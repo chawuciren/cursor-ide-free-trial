@@ -462,8 +462,8 @@ class FingerprintSimulator {
             logger.info('开始重置浏览器指纹...');
             
             const client = await page.target().createCDPSession();
-            await this.#injectFingerprintProtection(page, fingerprint);
             await this.#applyCDPOverrides(client, fingerprint);
+            await this.#applyEvaluateOverrides(page, fingerprint);
 
             logger.info('浏览器指纹重置完成');
         } catch (error) {
@@ -473,53 +473,101 @@ class FingerprintSimulator {
     }
 
     /**
-     * 注入指纹保护脚本
+     * 使用CDP协议设置浏览器特征
      * @private
      */
-    async #injectFingerprintProtection(page, fingerprint) {
-        // 注入 Notification API
-        await page.evaluateOnNewDocument(() => {
-            if (typeof Notification === 'undefined') {
-                window.Notification = class Notification {
-                    static get permission() { return 'granted'; }
-                    static requestPermission() { return Promise.resolve('granted'); }
-                    constructor() {}
-                };
-            }
-        });
+    async #applyCDPOverrides(client, fingerprint) {
+        try {
+            // 启用所有之前注释的配置
+            await this.#cdpHideAutomationMark(client);
+            await this.#cdpSetUserAgent(client, fingerprint);
+            await this.#cdpSetLocale(client, fingerprint);
+            await this.#cdpSetTimezone(client, fingerprint);
+            await this.#cdpSetDeviceMetrics(client, fingerprint);
+            await this.#cdpSetPerformanceMetrics(client);
 
-        // 注入设备信息
+        } catch (error) {
+            logger.error('CDP覆盖设置失败:', error.message);
+            logger.debug('CDP错误详情:', error);
+            logger.warn('部分CDP配置失败，但将继续执行');
+        }
+    }
+
+    /**
+     * 使用evaluate设置指纹保护
+     */
+    async #applyEvaluateOverrides(page, fingerprint) {
+        try {
+            await this.#evaluateCleanWebDriverBypass(page);
+            await this.#evaluateSetDeviceInfo(page, fingerprint);
+            await this.#evaluateSetPluginInfo(page, fingerprint);
+            await this.#evaluateInjectWebGLProtection(page);
+            await this.#evaluateInjectCanvasProtection(page);
+            await this.#evaluateInjectWebAudioProtection(page);
+        } catch (error) {
+            logger.error('evaluate设置指纹保护失败:', error.message);
+            logger.debug('evaluate错误详情:', error);
+            logger.warn('部分evaluate设置失败，但将继续执行');
+        }
+    }
+
+    /**
+     * 清理WebDriver绕过
+     */
+    async #evaluateCleanWebDriverBypass(page) {
+        // 注入 WebDriver 保护
+        await page.evaluateOnNewDocument(() => {
+
+            // 清理自动化标记
+            const protectedProps = [
+                'webdriver', '_selenium', 'callSelenium', '_Selenium_IDE_Recorder',
+                '__webdriver_evaluate', '__selenium_evaluate', '__webdriver_script_fn',
+                '__webdriver_script_func', '__webdriver_script_function', '__webdriver',
+                '__webdriver_unwrapped', '__webdriver_script_function', '$chrome_asyncScriptInfo',
+                '$cdc_asdjflasutopfhvcZLmcfl_', 'cdc_adoQpoasnfa76pfcZLmcfl_Array',
+                'cdc_adoQpoasnfa76pfcZLmcfl_Promise', 'cdc_adoQpoasnfa76pfcZLmcfl_Symbol',
+                'cdc_adoQpoasnfa76pfcZLmcfl_', 'cdc_adoQpoasnfa76pfcZLmcfl_Object',
+                'cdc_adoQpoasnfa76pfcZLmcfl_Proxy',
+                '_WEBDRIVER_ELEM_CACHE'
+            ];
+
+            const objects = [window, document];
+            for (const object of objects) {
+                for (const prop of protectedProps) {
+                    if (prop in object) {
+                        delete object[prop];
+                        Object.defineProperty(object, prop, {
+                            get: () => undefined,
+                            set: () => false,
+                            configurable: true,
+                            enumerable: false
+                        });
+                    }
+                }
+            }
+
+            for (const key in window) {
+                if (key.match(/driver|webdriver|selenium/gi)) {
+                    delete window[key];
+                    Object.defineProperty(window, key, {
+                        get: () => undefined,
+                        set: () => false,
+                        configurable: true,
+                        enumerable: false
+                    });
+                }
+            }
+
+        });
+    }
+
+    /**
+     * 设置设备信息
+     */
+    async #evaluateSetDeviceInfo(page, fingerprint) {
+        // 注入其他设备信息
         await page.evaluateOnNewDocument((fp) => {
             try {
-                // 添加浏览器特征
-                Object.defineProperties(navigator, {
-                    deviceMemory: {
-                        value: fp.browser.deviceMemory,
-                        configurable: true,
-                        enumerable: true
-                    },
-                    hardwareConcurrency: {
-                        value: fp.browser.hardwareConcurrency,
-                        configurable: true,
-                        enumerable: true
-                    },
-                    vendor: {
-                        value: 'Google Inc.',
-                        configurable: true,
-                        enumerable: true
-                    },
-                    platform: {
-                        value: 'Win32',
-                        configurable: true,
-                        enumerable: true
-                    },
-                    maxTouchPoints: {
-                        value: fp.device.touchPoints,
-                        configurable: true,
-                        enumerable: true
-                    }
-                });
-
                 // 保护 performance.memory
                 if (window.performance) {
                     // 创建一个只读的内存信息对象
@@ -587,184 +635,17 @@ class FingerprintSimulator {
                 // 忽略错误，继续执行
             }
         }, fingerprint);
+    }
 
-        // 注入 WebDriver 保护
-        await page.evaluateOnNewDocument(() => {
-            // 删除 webdriver 属性
-            if ('webdriver' in navigator) {
-                Object.defineProperty(Navigator.prototype, 'webdriver', {
-                    get: () => undefined,
-                    configurable: true,
-                    enumerable: true
-                });
-            }
-
-            // 清理自动化标记
-            const protectedProps = [
-                'webdriver', '_selenium', 'callSelenium', '_Selenium_IDE_Recorder',
-                '__webdriver_evaluate', '__selenium_evaluate', '__webdriver_script_fn',
-                '__webdriver_script_func', '__webdriver_script_function', '__webdriver',
-                '__webdriver_unwrapped', '__webdriver_script_function', '$chrome_asyncScriptInfo',
-                '$cdc_asdjflasutopfhvcZLmcfl_', 'cdc_adoQpoasnfa76pfcZLmcfl_Array',
-                'cdc_adoQpoasnfa76pfcZLmcfl_Promise', 'cdc_adoQpoasnfa76pfcZLmcfl_Symbol',
-                '_WEBDRIVER_ELEM_CACHE'
-            ];
-
-            const objects = [window, document];
-            for (const object of objects) {
-                for (const prop of protectedProps) {
-                    if (prop in object) {
-                        delete object[prop];
-                        Object.defineProperty(object, prop, {
-                            get: () => undefined,
-                            set: () => false,
-                            configurable: true,
-                            enumerable: false
-                        });
-                    }
-                }
-            }
-
-            for (const key in window) {
-                if (key.match(/driver|webdriver|selenium/gi)) {
-                    delete window[key];
-                    Object.defineProperty(window, key, {
-                        get: () => undefined,
-                        set: () => false,
-                        configurable: true,
-                        enumerable: false
-                    });
-                }
-            }
-        });
-
-        // 注入 Chrome 保护
-        await page.evaluateOnNewDocument(() => {
-            try {
-                const chromeObj = {
-                    app: {
-                        isInstalled: false,
-                        InstallState: {
-                            DISABLED: 'disabled',
-                            INSTALLED: 'installed',
-                            NOT_INSTALLED: 'not_installed'
-                        },
-                        RunningState: {
-                            CANNOT_RUN: 'cannot_run',
-                            READY_TO_RUN: 'ready_to_run',
-                            RUNNING: 'running'
-                        },
-                        getDetails: () => ({}),
-                        getIsInstalled: () => false,
-                        installState: () => 'not_installed',
-                        runningState: () => 'cannot_run'
-                    },
-                    runtime: {
-                        PlatformOs: {
-                            MAC: 'mac',
-                            WIN: 'win',
-                            ANDROID: 'android',
-                            CROS: 'cros',
-                            LINUX: 'linux',
-                            OPENBSD: 'openbsd'
-                        },
-                        PlatformArch: {
-                            ARM: 'arm',
-                            X86_32: 'x86-32',
-                            X86_64: 'x86-64'
-                        },
-                        RequestUpdateCheckStatus: {
-                            THROTTLED: 'throttled',
-                            NO_UPDATE: 'no_update',
-                            UPDATE_AVAILABLE: 'update_available'
-                        },
-                        OnInstalledReason: {
-                            INSTALL: 'install',
-                            UPDATE: 'update',
-                            CHROME_UPDATE: 'chrome_update',
-                            SHARED_MODULE_UPDATE: 'shared_module_update'
-                        },
-                        OnRestartRequiredReason: {
-                            APP_UPDATE: 'app_update',
-                            OS_UPDATE: 'os_update',
-                            PERIODIC: 'periodic'
-                        },
-                        connect: () => { throw new Error('Extension context invalidated.'); },
-                        sendMessage: () => Promise.resolve()
-                    },
-                    csi: () => ({}),
-                    loadTimes: () => ({})
-                };
-
-                const chromeHandler = {
-                    get: (target, property) => {
-                        if (property in target) {
-                            const value = target[property];
-                            return typeof value === 'object' && value !== null ?
-                                new Proxy(value, chromeHandler) : value;
-                        }
-                        return undefined;
-                    },
-                    has: (target, property) => property in target
-                };
-
-                // 只在chrome未定义时才创建
-                if (!window.chrome) {
-                    Object.defineProperty(window, 'chrome', {
-                        value: new Proxy(chromeObj, chromeHandler),
-                        enumerable: true,
-                        writable: true,
-                        configurable: true
-                    });
-                }
-            } catch (e) {
-                // 忽略错误，继续执行
-            }
-        });
-
-        // 注入 Permissions 保护
-        await page.evaluateOnNewDocument(() => {
-            try {
-                const permissionsHandler = {
-                    query: async (parameters) => {
-                        const permissionStatus = {
-                            state: 'granted',
-                            onchange: null,
-                            addEventListener: function(type, listener) {
-                                if (type !== 'change') return;
-                                this._listeners = this._listeners || [];
-                                this._listeners.push(listener);
-                            },
-                            removeEventListener: function(type, listener) {
-                                if (type !== 'change') return;
-                                const index = this._listeners?.indexOf(listener);
-                                if (index > -1) this._listeners.splice(index, 1);
-                            },
-                            dispatchEvent: function(event) {
-                                if (this._listeners) {
-                                    this._listeners.forEach(listener => listener(event));
-                                }
-                                return true;
-                            }
-                        };
-                        return Promise.resolve(permissionStatus);
-                    }
-                };
-
-                // 检查permissions是否可配置
-                const descriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'permissions');
-                if (!descriptor || descriptor.configurable) {
-                    Object.defineProperty(Navigator.prototype, 'permissions', {
-                        value: permissionsHandler,
-                        enumerable: true,
-                        writable: true,
-                        configurable: true
-                    });
-                }
-            } catch (e) {
-                // 忽略错误，继续执行
-            }
-        });
+    /**
+     * 设置插件信息
+     */
+    async #evaluateSetPluginInfo(page, fingerprint) {
+        // FIXME:
+        // Navigator.plugins:
+        // - failed descriptor.value undefined
+        // - missing mimetype
+        // - invalid mimetype
 
         // 注入 Plugins 保护
         await page.evaluateOnNewDocument(() => {
@@ -841,35 +722,24 @@ class FingerprintSimulator {
                 // 忽略错误，继续执行
             }
         });
+    }
+    
+    /**
+     * 注入 WebGL
+     */
+    async #evaluateInjectWebGLProtection(page) {
+        // FIXME: 
+        // HTMLCanvasElement.getContext:
+        // - failed class extends error
+        // - failed toString
+        // - failed "prototype" in function
+        // - failed descriptor
+        // - failed own property
+        // - failed descriptor keys
+        // - failed own property names
+        // - failed own keys names
+        // - failed at incompatible proxy error
 
-        // 注入 Languages 保护
-        await page.evaluateOnNewDocument(() => {
-            try {
-                const languageList = ['en-US', 'en', 'en-GB'];
-                
-                // 检查languages是否可配置
-                const languagesDescriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'languages');
-                if (!languagesDescriptor || languagesDescriptor.configurable) {
-                    Object.defineProperty(Navigator.prototype, 'languages', {
-                        get: () => Object.freeze([...languageList]),
-                        enumerable: true,
-                        configurable: true
-                    });
-                }
-
-                // 检查language是否可配置
-                const languageDescriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'language');
-                if (!languageDescriptor || languageDescriptor.configurable) {
-                    Object.defineProperty(Navigator.prototype, 'language', {
-                        get: () => languageList[0],
-                        enumerable: true,
-                        configurable: true
-                    });
-                }
-            } catch (e) {
-                // 忽略错误，继续执行
-            }
-        });
 
         // 注入 WebGL 保护
         await page.evaluateOnNewDocument(() => {
@@ -922,6 +792,54 @@ class FingerprintSimulator {
                 return gl;
             };
         });
+    }
+
+    /**
+     * 注入 Canvas
+     */
+    async #evaluateInjectCanvasProtection(page) { 
+        // FIXME:
+        // CanvasRenderingContext2D.getImageData:
+        // - failed class extends error
+        // - failed toString
+        // - failed "prototype" in function
+        // - failed descriptor
+        // - failed own property
+        // - failed descriptor keys
+        // - failed own property names
+        // - failed own keys names
+        // - failed at incompatible proxy error
+        // HTMLCanvasElement.getContext:
+        // - failed class extends error
+        // - failed toString
+        // - failed "prototype" in function
+        // - failed descriptor
+        // - failed own property
+        // - failed descriptor keys
+        // - failed own property names
+        // - failed own keys names
+        // - failed at incompatible proxy error
+        // HTMLCanvasElement.toBlob:
+        // - failed class extends error
+        // - failed toString
+        // - failed "prototype" in function
+        // - failed descriptor
+        // - failed own property
+        // - failed descriptor keys
+        // - failed own property names
+        // - failed own keys names
+        // - failed at incompatible proxy error
+        // HTMLCanvasElement.toDataURL:
+        // - failed class extends error
+        // - failed toString
+        // - failed "prototype" in function
+        // - failed descriptor
+        // - failed own property
+        // - failed descriptor keys
+        // - failed own property names
+        // - failed own keys names
+        // - failed at incompatible proxy error
+
 
         // 增强 Canvas 保护
         await page.evaluateOnNewDocument(() => {
@@ -993,514 +911,57 @@ class FingerprintSimulator {
                 return context;
             };
         });
+    }
 
-        // 注入 deviceMemory 保护
-        await page.evaluateOnNewDocument((memory) => {
-            try {
-                Object.defineProperty(navigator, 'deviceMemory', {
-                    value: memory,
-                    configurable: false,
-                    enumerable: true,
-                    writable: false
-                });
-            } catch (e) {
-                // 忽略错误
-            }
-        }, fingerprint.browser.deviceMemory);
-
-        // 注入 Error 保护
-        await page.evaluateOnNewDocument(() => {
-            const errorHandler = {
-                get(target, property) {
-                    if (property === 'stack') {
-                        return target[property].replace(
-                            /\n.*?(puppeteer|webdriver|selenium|driver).*$/gm,
-                            ''
-                        );
-                    }
-                    return target[property];
-                }
-            };
-
-            window.Error = new Proxy(Error, {
-                construct(target, args) {
-                    const error = new target(...args);
-                    return new Proxy(error, errorHandler);
-                }
-            });
-        });
-
-        // 注入 Navigator API 保护
-        await page.evaluateOnNewDocument(() => {
-            const originalSendBeacon = navigator.sendBeacon;
-            const originalGetUserMedia = navigator.mediaDevices?.getUserMedia;
-            const originalGetBattery = navigator.getBattery;
-
-            if (originalSendBeacon) {
-                navigator.sendBeacon = function(url, data) {
-                    if (arguments.length === 0) {
-                        throw new TypeError('Failed to execute sendBeacon on Navigator: 1 argument required, but only 0 present.');
-                    }
-                    return originalSendBeacon.apply(navigator, arguments);
-                };
-            }
-
-            if (navigator.mediaDevices) {
-                navigator.mediaDevices.getUserMedia = function(constraints) {
-                    if (arguments.length === 0) {
-                        throw new TypeError('Failed to execute getUserMedia on MediaDevices: 1 argument required, but only 0 present.');
-                    }
-                    return originalGetUserMedia ? originalGetUserMedia.apply(navigator.mediaDevices, arguments) 
-                        : Promise.reject(new Error('getUserMedia is not supported'));
-                };
-            }
-
-            if (originalGetBattery) {
-                navigator.getBattery = function() {
-                    return originalGetBattery.apply(navigator);
-                };
-            }
-        });
-
-        // 注入 Headers 保护
-        await page.evaluateOnNewDocument((fp) => {
-            try {
-                // 保护 Headers
-                const originalHeaders = window.Headers;
-                window.Headers = class extends originalHeaders {
-                    constructor(init) {
-                        super(init);
-                        if (init && typeof init === 'object') {
-                            // 确保所有请求头与 fingerprint 一致
-                            const headers = {
-                                'accept': fp.headers.accept,
-                                'accept-language': fp.headers['accept-language'],
-                                'origin': fp.headers.origin,
-                                'referer': fp.headers.referer,
-                                'sec-ch-ua': fp.headers['sec-ch-ua'],
-                                'sec-ch-ua-mobile': fp.headers['sec-ch-ua-mobile'],
-                                'sec-ch-ua-platform': fp.headers['sec-ch-ua-platform'],
-                                'sec-fetch-dest': fp.headers['sec-fetch-dest'],
-                                'sec-fetch-mode': fp.headers['sec-fetch-mode'],
-                                'sec-fetch-site': fp.headers['sec-fetch-site'],
-                                'user-agent': fp.browser.userAgent
-                            };
-
-                            // 应用默认请求头
-                            for (const [key, value] of Object.entries(headers)) {
-                                if (value) {
-                                    super.set(key, value);
-                                }
-                            }
-
-                            // 应用自定义请求头
-                            for (const [key, value] of Object.entries(init)) {
-                                if (!headers[key.toLowerCase()] && typeof value === 'string') {
-                                    super.set(key, value);
-                                }
-                            }
-                        }
-                    }
-
-                    append(name, value) {
-                        const lowerName = name.toLowerCase();
-                        // 保护关键请求头
-                        if (lowerName === 'user-agent') {
-                            super.append(name, fp.browser.userAgent);
-                            return;
-                        }
-                        if (lowerName === 'accept-language') {
-                            super.append(name, fp.browser.acceptLanguage);
-                            return;
-                        }
-                        if (fp.headers[lowerName]) {
-                            super.append(name, fp.headers[lowerName]);
-                            return;
-                        }
-                        super.append(name, value);
-                    }
-
-                    set(name, value) {
-                        const lowerName = name.toLowerCase();
-                        // 保护关键请求头
-                        if (lowerName === 'user-agent') {
-                            super.set(name, fp.browser.userAgent);
-                            return;
-                        }
-                        if (lowerName === 'accept-language') {
-                            super.set(name, fp.browser.acceptLanguage);
-                            return;
-                        }
-                        if (fp.headers[lowerName]) {
-                            super.set(name, fp.headers[lowerName]);
-                            return;
-                        }
-                        super.set(name, value);
-                    }
-                };
-
-                // 保护 fetch
-                const originalFetch = window.fetch;
-                window.fetch = function(...args) {
-                    if (args[1] && args[1].headers) {
-                        const headers = new Headers(args[1].headers);
-                        args[1].headers = headers;
-                    } else if (args[1]) {
-                        // 如果没有设置 headers，添加默认 headers
-                        args[1].headers = new Headers({});
-                    } else {
-                        // 如果没有设置 options，添加默认 options 和 headers
-                        args[1] = { headers: new Headers({}) };
-                    }
-                    return originalFetch.apply(this, args);
-                };
-
-                // 保护 XMLHttpRequest
-                const originalXHR = window.XMLHttpRequest;
-                window.XMLHttpRequest = class extends originalXHR {
-                    constructor() {
-                        super();
-                        this._headers = new Headers({});
-                    }
-
-                    setRequestHeader(header, value) {
-                        this._headers.set(header, value);
-                        const lowerHeader = header.toLowerCase();
-                        // 保护关键请求头
-                        if (lowerHeader === 'user-agent') {
-                            super.setRequestHeader(header, fp.browser.userAgent);
-                            return;
-                        }
-                        if (lowerHeader === 'accept-language') {
-                            super.setRequestHeader(header, fp.browser.acceptLanguage);
-                            return;
-                        }
-                        if (fp.headers[lowerHeader]) {
-                            super.setRequestHeader(header, fp.headers[lowerHeader]);
-                            return;
-                        }
-                        super.setRequestHeader(header, value);
-                    }
-
-                    send(data) {
-                        // 确保设置了所有必要的请求头
-                        for (const [key, value] of Object.entries(fp.headers)) {
-                            if (!this._headers.has(key)) {
-                                super.setRequestHeader(key, value);
-                            }
-                        }
-                        super.send(data);
-                    }
-                };
-
-                // 修改 performance.now() 的精度
-                const originalNow = window.performance.now;
-                window.performance.now = function() {
-                    return Math.floor(originalNow.call(performance) * 100) / 100;
-                };
-            } catch (e) {
-                // 忽略错误，继续执行
-            }
-        }, fingerprint);
-
-        // 注入 Storage 保护
-        await page.evaluateOnNewDocument(() => {
-            try {
-                const storage = {
-                    length: 0,
-                    clear: function() {},
-                    getItem: function() { return null; },
-                    key: function() { return null; },
-                    removeItem: function() {},
-                    setItem: function() {}
-                };
-
-                Object.defineProperty(window, 'localStorage', {
-                    value: storage,
-                    configurable: true,
-                    enumerable: true,
-                    writable: true
-                });
-
-                Object.defineProperty(window, 'sessionStorage', {
-                    value: storage,
-                    configurable: true,
-                    enumerable: true,
-                    writable: true
-                });
-            } catch (e) {
-                // 忽略错误，继续执行
-            }
-        });
-
+    /**
+     * 注入 Web Audio
+     */
+    async #evaluateInjectWebAudioProtection(page) {
         // 注入 Web Audio API 保护
         await page.evaluateOnNewDocument(() => {
             if (window.AudioContext || window.webkitAudioContext) {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                const originalCreateAnalyser = AudioContext.prototype.createAnalyser;
-                const originalCreateBuffer = AudioContext.prototype.createBuffer;
-
-                // 创建一个通用的属性包装器
-                const wrapProperty = (value, propName) => {
-                    if (typeof value === 'number') {
-                        const numObj = new Number(value);
-                        // 确保数值的toString返回与原生一致
-                        Object.defineProperties(numObj, {
-                            toString: {
-                                value: function() { 
-                                    return value.toString();
-                                },
-                                enumerable: false,
-                                writable: true,
-                                configurable: true
-                            },
-                            valueOf: {
-                                value: function() {
-                                    return value;
-                                },
-                                enumerable: false,
-                                writable: true,
-                                configurable: true
-                            }
-                        });
-                        return numObj;
+                const OriginalAudioContext = window.AudioContext || window.webkitAudioContext;
+                const AudioContextProxy = new Proxy(OriginalAudioContext, {
+                    construct(target, args) {
+                        const instance = Reflect.construct(target, args);
+                        return createProxy(instance, 'AudioContext');
                     }
-                    return value;
-                };
+                });
 
-                // 创建一个通用的方法包装器
-                const wrapMethod = (method, name, className) => {
-                    function wrappedMethod(...args) {
-                        const result = method.apply(this, args);
-                        // 如果结果是TypedArray，确保它的toString正确
-                        if (ArrayBuffer.isView(result)) {
-                            Object.defineProperty(result, 'toString', {
-                                value: function() {
-                                    return `[object ${result.constructor.name}]`;
-                                },
-                                enumerable: false,
-                                writable: true,
-                                configurable: true
-                            });
-                        }
-                        return result;
-                    }
-                    
-                    // 设置方法的属性
-                    Object.defineProperties(wrappedMethod, {
-                        name: { value: name, configurable: true },
-                        length: { value: method.length, configurable: true },
-                        toString: {
-                            value: function() {
-                                return `function ${name}() { [native code] }`;
-                            },
-                            enumerable: false,
-                            writable: true,
-                            configurable: true
-                        }
-                    });
-                    
-                    return wrappedMethod;
-                };
-
-                // 创建一个通用的对象包装器
-                const wrapAudioNode = (node, className, properties = {}) => {
-                    const handler = {
-                        get(target, prop) {
-                            // 处理特殊属性
-                            if (prop === Symbol.toStringTag) {
-                                return className;
-                            }
-                            if (prop === 'toString') {
-                                return function() { 
-                                    return `[object ${className}]`; 
-                                };
-                            }
-                            if (prop === 'constructor') {
-                                const constructor = function() {
-                                    throw new TypeError(`Illegal constructor`);
-                                };
-                                Object.defineProperties(constructor, {
-                                    [Symbol.toStringTag]: { value: className },
-                                    toString: {
-                                        value: function() {
-                                            return `function ${className}() { [native code] }`;
-                                        },
-                                        enumerable: false,
-                                        writable: true,
-                                        configurable: true
-                                    }
-                                });
-                                return constructor;
-                            }
-
-                            // 处理属性
-                            if (prop in properties) {
-                                return wrapProperty(properties[prop], prop);
-                            }
-
-                            // 处理方法
-                            const value = target[prop];
-                            if (typeof value === 'function') {
-                                return wrapMethod(value, prop, className);
-                            }
-
-                            return value;
-                        },
-                        getOwnPropertyDescriptor(target, prop) {
-                            if (prop in properties) {
-                                return {
-                                    value: wrapProperty(properties[prop], prop),
-                                    writable: true,
-                                    enumerable: true,
-                                    configurable: true
-                                };
-                            }
-                            const descriptor = Object.getOwnPropertyDescriptor(target, prop);
-                            if (descriptor && typeof descriptor.value === 'function') {
-                                descriptor.value = wrapMethod(descriptor.value, prop, className);
-                            }
-                            return descriptor;
-                        },
-                        ownKeys(target) {
-                            const ownKeys = Reflect.ownKeys(target);
-                            return [...new Set([...Object.keys(properties), ...ownKeys])];
-                        },
-                        has(target, prop) {
-                            return prop in properties || prop in target;
-                        }
-                    };
-
-                    const proxy = new Proxy(node, handler);
-                    Object.setPrototypeOf(proxy, node.constructor.prototype);
-                    return proxy;
-                };
-
-                // 保护 AnalyserNode
-                AudioContext.prototype.createAnalyser = function() {
-                    const analyser = originalCreateAnalyser.call(this);
-                    const properties = {
-                        fftSize: 2048,
-                        frequencyBinCount: 1024,
-                        minDecibels: -100,
-                        maxDecibels: -30,
-                        smoothingTimeConstant: 0.8
-                    };
-
-                    // 包装 getByteFrequencyData 等方法
-                    const originalMethods = {
-                        getByteFrequencyData: analyser.getByteFrequencyData,
-                        getByteTimeDomainData: analyser.getByteTimeDomainData,
-                        getFloatFrequencyData: analyser.getFloatFrequencyData,
-                        getFloatTimeDomainData: analyser.getFloatTimeDomainData
-                    };
-
-                    for (const [methodName, method] of Object.entries(originalMethods)) {
-                        analyser[methodName] = function(array) {
-                            method.call(this, array);
-                            // 确保TypedArray的toString正确
-                            Object.defineProperty(array, 'toString', {
-                                value: function() {
-                                    return `[object ${array.constructor.name}]`;
-                                },
-                                enumerable: false,
-                                writable: true,
-                                configurable: true
-                            });
-                            return undefined;
-                        };
-                    }
-
-                    return wrapAudioNode(analyser, 'AnalyserNode', properties);
-                };
-
-                // 保护 AudioBuffer
-                AudioContext.prototype.createBuffer = function(numChannels, length, sampleRate) {
-                    const buffer = originalCreateBuffer.call(this, numChannels, length, sampleRate);
-                    
-                    // 包装 getChannelData 和 copyFromChannel 方法
-                    const originalGetChannelData = buffer.getChannelData;
-                    buffer.getChannelData = function(channel) {
-                        const array = originalGetChannelData.call(this, channel);
-                        Object.defineProperty(array, 'toString', {
-                            value: function() {
-                                return '[object Float32Array]';
-                            },
-                            enumerable: false,
-                            writable: true,
-                            configurable: true
-                        });
-                        return array;
-                    };
-
-                    const originalCopyFromChannel = buffer.copyFromChannel;
-                    buffer.copyFromChannel = function(destination, channelNumber, startInChannel) {
-                        originalCopyFromChannel.call(this, destination, channelNumber, startInChannel);
-                        Object.defineProperty(destination, 'toString', {
-                            value: function() {
-                                return '[object Float32Array]';
-                            },
-                            enumerable: false,
-                            writable: true,
-                            configurable: true
-                        });
-                    };
-
-                    return wrapAudioNode(buffer, 'AudioBuffer');
-                };
-
-                // 保护 BiquadFilterNode
-                const originalCreateBiquadFilter = AudioContext.prototype.createBiquadFilter;
-                AudioContext.prototype.createBiquadFilter = function() {
-                    const filter = originalCreateBiquadFilter.call(this);
-                    
-                    // 包装 getFrequencyResponse 方法
-                    const originalGetFrequencyResponse = filter.getFrequencyResponse;
-                    filter.getFrequencyResponse = function(frequencyArray, magResponseArray, phaseResponseArray) {
-                        originalGetFrequencyResponse.call(this, frequencyArray, magResponseArray, phaseResponseArray);
-                        // 确保所有TypedArray的toString正确
-                        [frequencyArray, magResponseArray, phaseResponseArray].forEach(array => {
-                            Object.defineProperty(array, 'toString', {
-                                value: function() {
-                                    return `[object ${array.constructor.name}]`;
-                                },
-                                enumerable: false,
-                                writable: true,
-                                configurable: true
-                            });
-                        });
-                    };
-
-                    return wrapAudioNode(filter, 'BiquadFilterNode');
-                };
+                // 替换全局 AudioContext
+                if (window.AudioContext) {
+                    window.AudioContext = AudioContextProxy;
+                }
+                if (window.webkitAudioContext) {
+                    window.webkitAudioContext = AudioContextProxy;
+                }
             }
         });
     }
 
     /**
-     * 使用CDP协议设置浏览器特征
-     * @private
+     * 设置隐藏一些自动化标记
      */
-    async #applyCDPOverrides(client, fingerprint) {
-        try {
-            await this.#setUserAgent(client, fingerprint);
-            await this.#setLocale(client, fingerprint);
-            await this.#setTimezone(client, fingerprint);
-            await this.#setDeviceMetrics(client, fingerprint);
-            await this.#setPerformanceMetrics(client);
-        } catch (error) {
-            logger.error('CDP覆盖设置失败:', error.message);
-            logger.debug('CDP错误详情:', error);
-            logger.warn('部分CDP配置失败，但将继续执行');
-        }
+    async #cdpHideAutomationMark(client) {
+        // 添加额外的 CDP 配置
+        await client.send('Page.setBypassCSP', { enabled: true });
+        await client.send('Network.setBypassServiceWorker', { bypass: true });
+        await client.send('Emulation.setAutomationOverride', { enabled: false });
+        await client.send('Performance.enable');
+
+        // 禁用自动化标记
+        await client.send('Page.setDownloadBehavior', {
+            behavior: 'allow',
+            downloadPath: './downloads'
+        });
     }
 
     /**
      * 设置用户代理
      * @private
      */
-    async #setUserAgent(client, fingerprint) {
-        await client.send('Network.setUserAgentOverride', {
+    async #cdpSetUserAgent(client, fingerprint) {
+        const userAgentInfo = {
             userAgent: fingerprint.browser.userAgent,
             acceptLanguage: fingerprint.browser.acceptLanguage,
             platform: fingerprint.browser.platform,
@@ -1515,9 +976,12 @@ class FingerprintSimulator {
                 bitness: fingerprint.browser.bitness,
                 wow64: fingerprint.browser.wow64
             }
-        });
+        };
+        // 设置浏览器级别的 userAgent
+        await client.send('Emulation.setUserAgentOverride', userAgentInfo);
+        await client.send('Network.setUserAgentOverride', userAgentInfo);
 
-        // 设置一致的请求头
+        设置一致的请求头
         await client.send('Network.setExtraHTTPHeaders', {
             headers: fingerprint.headers
         });
@@ -1527,7 +991,7 @@ class FingerprintSimulator {
      * 设置地区
      * @private
      */
-    async #setLocale(client, fingerprint) {
+    async #cdpSetLocale(client, fingerprint) {
         const [language, region] = fingerprint.browser.acceptLanguage.split('-');
         
         await client.send('Emulation.setLocaleOverride', {
@@ -1544,7 +1008,7 @@ class FingerprintSimulator {
      * 设置时区
      * @private
      */
-    async #setTimezone(client, fingerprint) {
+    async #cdpSetTimezone(client, fingerprint) {
         await client.send('Emulation.setTimezoneOverride', {
             timezoneId: fingerprint.timezone.id
         }).catch(() => {});
@@ -1554,7 +1018,7 @@ class FingerprintSimulator {
      * 设置设备度量
      * @private
      */
-    async #setDeviceMetrics(client, fingerprint) {
+    async #cdpSetDeviceMetrics(client, fingerprint) {
         await client.send('Emulation.setDeviceMetricsOverride', {
             width: fingerprint.device.screen.width,
             height: fingerprint.device.screen.height,
@@ -1567,7 +1031,7 @@ class FingerprintSimulator {
      * 设置性能指标
      * @private
      */
-    async #setPerformanceMetrics(client) {
+    async #cdpSetPerformanceMetrics(client) {
         await client.send('Emulation.setCPUThrottlingRate', { rate: 1 })
             .catch(() => {});
         await client.send('Network.enable').catch(() => {});
