@@ -500,7 +500,7 @@ class FingerprintSimulator {
         try {
             await this.#evaluateCleanWebDriverBypass(page);
             await this.#evaluateSetDeviceInfo(page, fingerprint);
-            await this.#evaluateSetPluginInfo(page, fingerprint);
+            await this.#evaluateSetPluginInfo(page);
             await this.#evaluateInjectWebGLProtection(page);
             await this.#evaluateInjectCanvasProtection(page);
             await this.#evaluateInjectWebAudioProtection(page);
@@ -640,84 +640,281 @@ class FingerprintSimulator {
     /**
      * 设置插件信息
      */
-    async #evaluateSetPluginInfo(page, fingerprint) {
-        // FIXME:
-        // Navigator.plugins:
-        // - failed descriptor.value undefined
-        // - missing mimetype
-        // - invalid mimetype
-
-        // 注入 Plugins 保护
+    async #evaluateSetPluginInfo(page) {
         await page.evaluateOnNewDocument(() => {
             try {
-                const plugins = [
-                    {
-                        0: {
-                            type: 'application/x-google-chrome-pdf',
-                            suffixes: 'pdf',
-                            description: 'Portable Document Format',
-                            enabledPlugin: true,
-                            __proto__: Plugin.prototype
+                // 创建MimeType代理
+                const createMimeTypeProxy = (mimeTypeData) => {
+                    const mimeTypeProto = Object.getPrototypeOf(navigator.mimeTypes[0]);
+                    
+                    return new Proxy({
+                        ...mimeTypeData,
+                        __proto__: mimeTypeProto
+                    }, {
+                        get(target, prop) {
+                            if (prop === 'enabledPlugin') {
+                                return target.plugin;
+                            }
+                            return Reflect.get(target, prop);
                         },
-                        name: 'Chrome PDF Plugin',
-                        filename: 'internal-pdf-viewer',
-                        description: 'Portable Document Format',
-                        length: 1,
-                        __proto__: Plugin.prototype
-                    },
-                    {
-                        0: {
-                            type: 'application/pdf',
-                            suffixes: 'pdf',
-                            description: '',
-                            enabledPlugin: true,
-                            __proto__: Plugin.prototype
-                        },
-                        name: 'Chrome PDF Viewer',
-                        filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
-                        description: '',
-                        length: 1,
-                        __proto__: Plugin.prototype
-                    }
-                ];
+                        getOwnPropertyDescriptor(target, prop) {
+                            const descriptor = Reflect.getOwnPropertyDescriptor(target, prop);
+                            if (descriptor) {
+                                descriptor.configurable = true;
+                            }
+                            return descriptor;
+                        }
+                    });
+                };
 
-                const pluginArray = Object.create(PluginArray.prototype);
-                
-                plugins.forEach((plugin, index) => {
-                    Object.defineProperty(pluginArray, index, {
-                        value: plugin,
+                // 创建Plugin代理
+                const createPluginProxy = (pluginData) => {
+                    const pluginProto = Object.getPrototypeOf(navigator.plugins[0]);
+                    
+                    const plugin = {
+                        ...pluginData,
+                        __proto__: pluginProto
+                    };
+
+                    // 设置MimeType数组
+                    pluginData.mimeTypes.forEach((mimeType, index) => {
+                        const mimeTypeProxy = createMimeTypeProxy({
+                            type: mimeType.type,
+                            suffixes: mimeType.suffixes,
+                            description: mimeType.description,
+                            plugin: plugin
+                        });
+
+                        Object.defineProperty(plugin, index, {
+                            value: mimeTypeProxy,
+                            writable: false,
+                            enumerable: true,
+                            configurable: true
+                        });
+
+                        Object.defineProperty(plugin, mimeType.type, {
+                            value: mimeTypeProxy,
+                            writable: false,
+                            enumerable: false,
+                            configurable: true
+                        });
+                    });
+
+                    Object.defineProperty(plugin, 'length', {
+                        value: pluginData.mimeTypes.length,
+                        writable: false,
                         enumerable: true,
-                        writable: true,
                         configurable: true
                     });
-                    Object.defineProperty(pluginArray, plugin.name, {
-                        value: plugin,
-                        enumerable: false,
-                        writable: true,
-                        configurable: true
-                    });
-                });
 
-                Object.defineProperty(pluginArray, 'length', {
-                    value: plugins.length,
+                    return new Proxy(plugin, {
+                        get(target, prop) {
+                            if (prop === 'namedItem') {
+                                return function(name) {
+                                    return target[name];
+                                };
+                            }
+                            if (prop === 'item') {
+                                return function(index) {
+                                    return target[index];
+                                };
+                            }
+                            return Reflect.get(target, prop);
+                        },
+                        getOwnPropertyDescriptor(target, prop) {
+                            const descriptor = Reflect.getOwnPropertyDescriptor(target, prop);
+                            if (descriptor) {
+                                descriptor.configurable = true;
+                            }
+                            return descriptor;
+                        }
+                    });
+                };
+
+                // 创建PluginArray代理
+                const createPluginArrayProxy = () => {
+                    const pluginArrayProto = Object.getPrototypeOf(navigator.plugins);
+                    const plugins = [
+                        {
+                            name: 'Chrome PDF Plugin',
+                            filename: 'internal-pdf-viewer',
+                            description: 'Portable Document Format',
+                            mimeTypes: [{
+                                type: 'application/x-google-chrome-pdf',
+                                suffixes: 'pdf',
+                                description: 'Portable Document Format'
+                            }]
+                        },
+                        {
+                            name: 'Chrome PDF Viewer',
+                            filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
+                            description: '',
+                            mimeTypes: [{
+                                type: 'application/pdf',
+                                suffixes: 'pdf',
+                                description: ''
+                            }]
+                        },
+                        {
+                            name: 'Native Client',
+                            filename: 'internal-nacl-plugin',
+                            description: '',
+                            mimeTypes: [
+                                {
+                                    type: 'application/x-nacl',
+                                    suffixes: '',
+                                    description: 'Native Client Executable'
+                                },
+                                {
+                                    type: 'application/x-pnacl',
+                                    suffixes: '',
+                                    description: 'Portable Native Client Executable'
+                                }
+                            ]
+                        }
+                    ];
+
+                    const pluginArray = {
+                        __proto__: pluginArrayProto
+                    };
+
+                    // 设置插件数组
+                    plugins.forEach((pluginData, index) => {
+                        const pluginProxy = createPluginProxy(pluginData);
+
+                        Object.defineProperty(pluginArray, index, {
+                            value: pluginProxy,
+                            writable: false,
+                            enumerable: true,
+                            configurable: true
+                        });
+
+                        Object.defineProperty(pluginArray, pluginData.name, {
+                            value: pluginProxy,
+                            writable: false,
+                            enumerable: false,
+                            configurable: true
+                        });
+                    });
+
+                    Object.defineProperty(pluginArray, 'length', {
+                        value: plugins.length,
+                        writable: false,
+                        enumerable: true,
+                        configurable: true
+                    });
+
+                    return new Proxy(pluginArray, {
+                        get(target, prop) {
+                            if (prop === 'namedItem') {
+                                return function(name) {
+                                    return target[name];
+                                };
+                            }
+                            if (prop === 'item') {
+                                return function(index) {
+                                    return target[index];
+                                };
+                            }
+                            if (prop === 'refresh') {
+                                return function() {};
+                            }
+                            return Reflect.get(target, prop);
+                        },
+                        getOwnPropertyDescriptor(target, prop) {
+                            const descriptor = Reflect.getOwnPropertyDescriptor(target, prop);
+                            if (descriptor) {
+                                descriptor.configurable = true;
+                            }
+                            return descriptor;
+                        }
+                    });
+                };
+
+                // 创建MimeTypeArray代理
+                const createMimeTypeArrayProxy = (plugins) => {
+                    const mimeTypeArrayProto = Object.getPrototypeOf(navigator.mimeTypes);
+                    const mimeTypeArray = {
+                        __proto__: mimeTypeArrayProto
+                    };
+
+                    let mimeTypes = [];
+                    plugins.forEach(plugin => {
+                        plugin.mimeTypes.forEach(mt => {
+                            mimeTypes.push({
+                                type: mt.type,
+                                suffixes: mt.suffixes,
+                                description: mt.description,
+                                plugin: plugin
+                            });
+                        });
+                    });
+
+                    mimeTypes.forEach((mimeType, index) => {
+                        const mimeTypeProxy = createMimeTypeProxy(mimeType);
+
+                        Object.defineProperty(mimeTypeArray, index, {
+                            value: mimeTypeProxy,
+                            writable: false,
+                            enumerable: true,
+                            configurable: true
+                        });
+
+                        Object.defineProperty(mimeTypeArray, mimeType.type, {
+                            value: mimeTypeProxy,
+                            writable: false,
+                            enumerable: false,
+                            configurable: true
+                        });
+                    });
+
+                    Object.defineProperty(mimeTypeArray, 'length', {
+                        value: mimeTypes.length,
+                        writable: false,
+                        enumerable: true,
+                        configurable: true
+                    });
+
+                    return new Proxy(mimeTypeArray, {
+                        get(target, prop) {
+                            if (prop === 'namedItem') {
+                                return function(name) {
+                                    return target[name];
+                                };
+                            }
+                            if (prop === 'item') {
+                                return function(index) {
+                                    return target[index];
+                                };
+                            }
+                            return Reflect.get(target, prop);
+                        },
+                        getOwnPropertyDescriptor(target, prop) {
+                            const descriptor = Reflect.getOwnPropertyDescriptor(target, prop);
+                            if (descriptor) {
+                                descriptor.configurable = true;
+                            }
+                            return descriptor;
+                        }
+                    });
+                };
+
+                // 设置navigator.plugins和navigator.mimeTypes
+                const pluginArrayProxy = createPluginArrayProxy();
+                const mimeTypeArrayProxy = createMimeTypeArrayProxy(pluginArrayProxy);
+
+                Object.defineProperty(Navigator.prototype, 'plugins', {
+                    get: () => pluginArrayProxy,
                     enumerable: true,
-                    writable: true,
                     configurable: true
                 });
 
-                pluginArray.item = function(index) { return this[index]; };
-                pluginArray.namedItem = function(name) { return this[name]; };
-                pluginArray.refresh = function() {};
+                Object.defineProperty(Navigator.prototype, 'mimeTypes', {
+                    get: () => mimeTypeArrayProxy,
+                    enumerable: true,
+                    configurable: true
+                });
 
-                // 检查plugins是否可配置
-                const descriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'plugins');
-                if (!descriptor || descriptor.configurable) {
-                    Object.defineProperty(Navigator.prototype, 'plugins', {
-                        get: () => pluginArray,
-                        enumerable: true,
-                        configurable: true
-                    });
-                }
             } catch (e) {
                 // 忽略错误，继续执行
             }
@@ -728,188 +925,236 @@ class FingerprintSimulator {
      * 注入 WebGL
      */
     async #evaluateInjectWebGLProtection(page) {
-        // FIXME: 
-        // HTMLCanvasElement.getContext:
-        // - failed class extends error
-        // - failed toString
-        // - failed "prototype" in function
-        // - failed descriptor
-        // - failed own property
-        // - failed descriptor keys
-        // - failed own property names
-        // - failed own keys names
-        // - failed at incompatible proxy error
-
-
-        // 注入 WebGL 保护
         await page.evaluateOnNewDocument(() => {
             if (!window.WebGLRenderingContext) return;
 
-            const originalGetContext = HTMLCanvasElement.prototype.getContext;
-            HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes) {
-                const gl = originalGetContext.call(this, contextType, {
-                    ...contextAttributes,
-                    preserveDrawingBuffer: true
+            // 创建WebGL上下文代理
+            const createWebGLProxy = (gl) => {
+                const vendorInfo = {
+                    [37445]: 'Google Inc. (NVIDIA)', // UNMASKED_VENDOR_WEBGL
+                    [37446]: 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1070 Direct3D11 vs_5_0 ps_5_0)', // UNMASKED_RENDERER_WEBGL
+                    [7936]: 'WebKit', // VENDOR
+                    [7937]: 'WebKit WebGL', // RENDERER
+                    [7938]: 'WebGL 1.0 (OpenGL ES 2.0 Chromium)', // VERSION
+                    [35724]: 'WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)', // SHADING_LANGUAGE_VERSION
+                    [3379]: 16384, // MAX_TEXTURE_SIZE
+                    [3386]: 32, // MAX_VERTEX_ATTRIBS
+                    [3410]: 8, // SUBPIXEL_BITS
+                    [3411]: 8, // RED_BITS
+                    [3412]: 8, // GREEN_BITS
+                    [3413]: 8, // BLUE_BITS
+                    [3414]: 8, // ALPHA_BITS
+                    [3415]: 24, // DEPTH_BITS
+                    [3416]: 8 // STENCIL_BITS
+                };
+
+                const debugInfo = {
+                    UNMASKED_VENDOR_WEBGL: 37445,
+                    UNMASKED_RENDERER_WEBGL: 37446
+                };
+
+                return new Proxy(gl, {
+                    get(target, prop) {
+                        if (prop === 'getParameter') {
+                            return new Proxy(target.getParameter, {
+                                apply(target, thisArg, args) {
+                                    const param = args[0];
+                                    if (param in vendorInfo) {
+                                        return vendorInfo[param];
+                                    }
+                                    return Reflect.apply(target, thisArg, args);
+                                }
+                            });
+                        }
+
+                        if (prop === 'getExtension') {
+                            return new Proxy(target.getExtension, {
+                                apply(target, thisArg, args) {
+                                    const name = args[0];
+                                    if (name === 'WEBGL_debug_renderer_info') {
+                                        return debugInfo;
+                                    }
+                                    return Reflect.apply(target, thisArg, args);
+                                }
+                            });
+                        }
+
+                        return Reflect.get(target, prop);
+                    }
                 });
-
-                if (gl && (contextType === 'webgl' || contextType === 'experimental-webgl')) {
-                    const getParameter = gl.getParameter.bind(gl);
-                    gl.getParameter = function(parameter) {
-                        const vendorInfo = {
-                            [37445]: 'Google Inc. (NVIDIA)',
-                            [37446]: 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1070 Direct3D11 vs_5_0 ps_5_0)',
-                            [7936]: 'WebKit',
-                            [7937]: 'WebKit WebGL',
-                            [7938]: 'WebGL 1.0 (OpenGL ES 2.0 Chromium)',
-                            [35724]: 'WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)',
-                            [3379]: 16384,
-                            [3386]: 32,
-                            [3410]: 8,
-                            [3411]: 8,
-                            [3412]: 8,
-                            [3413]: 8,
-                            [3414]: 8,
-                            [3415]: 24,
-                            [3416]: 8
-                        };
-
-                        return parameter in vendorInfo ? 
-                            vendorInfo[parameter] : 
-                            getParameter(parameter);
-                    };
-
-                    const debugInfo = {
-                        UNMASKED_VENDOR_WEBGL: 37445,
-                        UNMASKED_RENDERER_WEBGL: 37446
-                    };
-                    
-                    const originalGetExtension = gl.getExtension.bind(gl);
-                    gl.getExtension = function(name) {
-                        return name === 'WEBGL_debug_renderer_info' ?
-                            debugInfo : originalGetExtension(name);
-                    };
-                }
-                return gl;
             };
+
+            // 创建Canvas元素代理
+            const CanvasProxy = new Proxy(HTMLCanvasElement.prototype, {
+                get(target, prop) {
+                    if (prop === 'getContext') {
+                        return new Proxy(target.getContext, {
+                            apply(target, thisArg, args) {
+                                const context = Reflect.apply(target, thisArg, args);
+                                const contextType = args[0];
+                                
+                                if (context && (contextType === 'webgl' || contextType === 'experimental-webgl')) {
+                                    return createWebGLProxy(context);
+                                }
+                                return context;
+                            }
+                        });
+                    }
+                    return Reflect.get(target, prop);
+                }
+            });
+
+            // 保持原始原型引用
+            const originalProto = HTMLCanvasElement.prototype;
+
+            // 使用Object.defineProperty来设置代理
+            Object.defineProperty(HTMLCanvasElement, 'prototype', {
+                value: CanvasProxy,
+                writable: false,
+                enumerable: false,
+                configurable: false
+            });
+
+            // 保持toString的一致性
+            const originalToString = Function.prototype.toString;
+            Function.prototype.toString = new Proxy(originalToString, {
+                apply(target, thisArg, args) {
+                    if (thisArg === CanvasProxy.getContext) {
+                        return Reflect.apply(target, originalProto.getContext, args);
+                    }
+                    return Reflect.apply(target, thisArg, args);
+                }
+            });
+
+            // 保护WebGLRenderingContext原型
+            const WebGLProto = WebGLRenderingContext.prototype;
+            const WebGLProxyHandler = {
+                get(target, prop) {
+                    const value = Reflect.get(target, prop);
+                    if (typeof value === 'function') {
+                        return new Proxy(value, {
+                            apply(target, thisArg, args) {
+                                return Reflect.apply(target, thisArg, args);
+                            }
+                        });
+                    }
+                    return value;
+                }
+            };
+
+            Object.defineProperty(WebGLRenderingContext, 'prototype', {
+                value: new Proxy(WebGLProto, WebGLProxyHandler),
+                writable: false,
+                enumerable: false,
+                configurable: false
+            });
         });
     }
 
     /**
      * 注入 Canvas
      */
-    async #evaluateInjectCanvasProtection(page) { 
-        // FIXME:
-        // CanvasRenderingContext2D.getImageData:
-        // - failed class extends error
-        // - failed toString
-        // - failed "prototype" in function
-        // - failed descriptor
-        // - failed own property
-        // - failed descriptor keys
-        // - failed own property names
-        // - failed own keys names
-        // - failed at incompatible proxy error
-        // HTMLCanvasElement.getContext:
-        // - failed class extends error
-        // - failed toString
-        // - failed "prototype" in function
-        // - failed descriptor
-        // - failed own property
-        // - failed descriptor keys
-        // - failed own property names
-        // - failed own keys names
-        // - failed at incompatible proxy error
-        // HTMLCanvasElement.toBlob:
-        // - failed class extends error
-        // - failed toString
-        // - failed "prototype" in function
-        // - failed descriptor
-        // - failed own property
-        // - failed descriptor keys
-        // - failed own property names
-        // - failed own keys names
-        // - failed at incompatible proxy error
-        // HTMLCanvasElement.toDataURL:
-        // - failed class extends error
-        // - failed toString
-        // - failed "prototype" in function
-        // - failed descriptor
-        // - failed own property
-        // - failed descriptor keys
-        // - failed own property names
-        // - failed own keys names
-        // - failed at incompatible proxy error
-
-
-        // 增强 Canvas 保护
+    async #evaluateInjectCanvasProtection(page) {
         await page.evaluateOnNewDocument(() => {
             const modifyPixel = (data) => {
                 // 使用确定性的像素修改方法
                 const noise = Math.sin(data.length) * 2 + 1;
                 for (let i = 0; i < data.length; i += 4) {
-                    // 对所有通道添加微小的确定性噪声
-                    data[i] = Math.max(0, Math.min(255, data[i] + (noise % 1))); // R
-                    data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + (noise % 1))); // G
-                    data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + (noise % 1))); // B
-                    data[i + 3] = Math.max(0, Math.min(255, data[i + 3])); // 保持 Alpha 不变
+                    data[i] = Math.max(0, Math.min(255, data[i] + (noise % 1)));
+                    data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + (noise % 1)));
+                    data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + (noise % 1)));
                 }
             };
 
-            // 重写 getImageData
-            const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
-            CanvasRenderingContext2D.prototype.getImageData = function(x, y, width, height) {
-                const imageData = originalGetImageData.call(this, x, y, width, height);
-                modifyPixel(imageData.data);
-                return imageData;
-            };
-
-            // 重写 toDataURL
-            const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
-            HTMLCanvasElement.prototype.toDataURL = function(type, quality) {
-                const context = this.getContext('2d');
-                if (context) {
-                    const imageData = context.getImageData(0, 0, this.width, this.height);
-                    modifyPixel(imageData.data);
-                    context.putImageData(imageData, 0, 0);
-                }
-                return originalToDataURL.call(this, type, quality);
-            };
-
-            // 重写 toBlob
-            const originalToBlob = HTMLCanvasElement.prototype.toBlob;
-            HTMLCanvasElement.prototype.toBlob = function(callback, type, quality) {
-                const context = this.getContext('2d');
-                if (context) {
-                    const imageData = context.getImageData(0, 0, this.width, this.height);
-                    modifyPixel(imageData.data);
-                    context.putImageData(imageData, 0, 0);
-                }
-                originalToBlob.call(this, callback, type, quality);
-            };
-
-            // 添加Canvas上下文获取保护
-            const originalGetContext = HTMLCanvasElement.prototype.getContext;
-            HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes) {
-                const context = originalGetContext.call(this, contextType, contextAttributes);
-                if (context && contextType === '2d') {
-                    // 确保Canvas上下文的属性设置正确
-                    Object.defineProperties(context, {
-                        imageSmoothingQuality: {
-                            get: () => 'high',
-                            set: () => {}
-                        },
-                        filter: {
-                            get: () => 'none',
-                            set: () => {}
-                        },
-                        direction: {
-                            get: () => 'ltr',
-                            set: () => {}
+            // 创建Context2D代理
+            const createContext2DProxy = (context) => {
+                return new Proxy(context, {
+                    get(target, prop) {
+                        if (prop === 'getImageData') {
+                            return new Proxy(target.getImageData, {
+                                apply(target, thisArg, args) {
+                                    const imageData = Reflect.apply(target, thisArg, args);
+                                    modifyPixel(imageData.data);
+                                    return imageData;
+                                }
+                            });
                         }
-                    });
-                }
-                return context;
+                        return Reflect.get(target, prop);
+                    }
+                });
             };
+
+            // 创建Canvas元素代理
+            const CanvasProxy = new Proxy(HTMLCanvasElement.prototype, {
+                get(target, prop) {
+                    if (prop === 'getContext') {
+                        return new Proxy(target.getContext, {
+                            apply(target, thisArg, args) {
+                                const context = Reflect.apply(target, thisArg, args);
+                                if (context && args[0] === '2d') {
+                                    return createContext2DProxy(context);
+                                }
+                                return context;
+                            }
+                        });
+                    }
+                    
+                    if (prop === 'toDataURL') {
+                        return new Proxy(target.toDataURL, {
+                            apply(target, thisArg, args) {
+                                const context = thisArg.getContext('2d');
+                                if (context) {
+                                    const imageData = context.getImageData(0, 0, thisArg.width, thisArg.height);
+                                    modifyPixel(imageData.data);
+                                    context.putImageData(imageData, 0, 0);
+                                }
+                                return Reflect.apply(target, thisArg, args);
+                            }
+                        });
+                    }
+
+                    if (prop === 'toBlob') {
+                        return new Proxy(target.toBlob, {
+                            apply(target, thisArg, args) {
+                                const [callback, ...otherArgs] = args;
+                                const context = thisArg.getContext('2d');
+                                if (context) {
+                                    const imageData = context.getImageData(0, 0, thisArg.width, thisArg.height);
+                                    modifyPixel(imageData.data);
+                                    context.putImageData(imageData, 0, 0);
+                                }
+                                return Reflect.apply(target, thisArg, [callback, ...otherArgs]);
+                            }
+                        });
+                    }
+
+                    return Reflect.get(target, prop);
+                }
+            });
+
+            // 保持原始原型引用
+            const originalProto = HTMLCanvasElement.prototype;
+
+            // 使用Object.defineProperty来设置代理
+            Object.defineProperty(HTMLCanvasElement, 'prototype', {
+                value: CanvasProxy,
+                writable: false,
+                enumerable: false,
+                configurable: false
+            });
+
+            // 保持toString的一致性
+            const originalToString = Function.prototype.toString;
+            Function.prototype.toString = new Proxy(originalToString, {
+                apply(target, thisArg, args) {
+                    if (thisArg === CanvasProxy.getContext ||
+                        thisArg === CanvasProxy.toDataURL ||
+                        thisArg === CanvasProxy.toBlob) {
+                        return Reflect.apply(target, originalProto[thisArg.name], args);
+                    }
+                    return Reflect.apply(target, thisArg, args);
+                }
+            });
         });
     }
 
