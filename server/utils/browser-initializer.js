@@ -144,8 +144,6 @@ class BrowserInitializer {
                 "--disable-blink-features=AutomationControlled",
                 "--disable-features=IsolateOrigins",
                 "--disable-site-isolation-trials",
-                // "--disable-features=BlockInsecurePrivateNetworkRequests",
-                // "--disable-web-security",
                 "--disable-infobars",
                 "--window-position=0,0",
                 "--ignore-certificate-errors",
