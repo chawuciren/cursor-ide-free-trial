@@ -124,11 +124,11 @@ class FingerprintSimulator {
             try {
                 // 保护 performance.memory
                 if (window.performance) {
-                    // 创建一个只读的内存信息对象
+                    // 使用指纹中的内存信息
                     const memoryInfo = {
-                        jsHeapSizeLimit: 1024 * 1024 * 1024, // 1GB
-                        totalJSHeapSize: Math.floor(1024 * 1024 * 1024 * 0.7), // ~700MB
-                        usedJSHeapSize: Math.floor(1024 * 1024 * 1024 * 0.5), // ~500MB
+                        jsHeapSizeLimit: fp.device.memory.jsHeapSizeLimit,
+                        totalJSHeapSize: fp.device.memory.totalJSHeapSize,
+                        usedJSHeapSize: fp.device.memory.usedJSHeapSize
                     };
 
                     // 保护 performance.memory
@@ -147,8 +147,8 @@ class FingerprintSimulator {
                     const originalGetInfo = window.chrome.system.memory.getInfo;
                     window.chrome.system.memory.getInfo = function(callback) {
                         callback({
-                            availableCapacity: 1024 * 1024 * 1024, // 1GB
-                            capacity: 1024 * 1024 * 1024 // 1GB
+                            availableCapacity: fp.device.memory.jsHeapSizeLimit,
+                            capacity: fp.device.memory.jsHeapSizeLimit
                         });
                     };
                 }
@@ -157,22 +157,52 @@ class FingerprintSimulator {
                 if (window.process && typeof window.process.getSystemMemoryInfo === 'function') {
                     window.process.getSystemMemoryInfo = function() {
                         return {
-                            total: 1024 * 1024 * 1024, // 1GB
-                            free: Math.floor(1024 * 1024 * 1024 * 0.3), // ~300MB free
+                            total: fp.device.memory.jsHeapSizeLimit,
+                            free: fp.device.memory.jsHeapSizeLimit - fp.device.memory.usedJSHeapSize,
                             swapTotal: 0,
                             swapFree: 0
                         };
                     };
                 }
 
+                // 添加设备内存信息
+                if ('deviceMemory' in navigator) {
+                    Object.defineProperty(navigator, 'deviceMemory', {
+                        value: fp.browser.deviceMemory,
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+
+                // 添加硬件并发数
+                if ('hardwareConcurrency' in navigator) {
+                    Object.defineProperty(navigator, 'hardwareConcurrency', {
+                        value: fp.browser.hardwareConcurrency,
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+
+                // 添加最大触控点数
+                if ('maxTouchPoints' in navigator) {
+                    Object.defineProperty(navigator, 'maxTouchPoints', {
+                        value: fp.browser.maxTouchPoints,
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+
                 // 添加连接信息模拟
                 if (!navigator.connection) {
                     Object.defineProperty(navigator, 'connection', {
                         value: {
-                            effectiveType: fp.network.type,
+                            effectiveType: fp.network.effectiveType,
                             rtt: fp.network.rtt,
                             downlink: fp.network.downlink,
-                            saveData: fp.network.saveData
+                            saveData: fp.network.saveData,
+                            type: fp.network.type,
+                            downlinkMax: fp.network.downlinkMax,
+                            onchange: fp.network.onchange
                         },
                         configurable: true,
                         enumerable: true
@@ -182,9 +212,51 @@ class FingerprintSimulator {
                 // 添加电池 API 模拟
                 if (!navigator.getBattery) {
                     navigator.getBattery = function() {
-                        return Promise.resolve(fp.battery);
+                        return Promise.resolve({
+                            charging: fp.battery.charging,
+                            chargingTime: fp.battery.chargingTime,
+                            dischargingTime: fp.battery.dischargingTime,
+                            level: fp.battery.level
+                        });
                     };
                 }
+
+                // 添加平台信息
+                if ('platform' in navigator) {
+                    Object.defineProperty(navigator, 'platform', {
+                        value: fp.browser.platform,
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+
+                // 添加供应商信息
+                if ('vendor' in navigator) {
+                    Object.defineProperty(navigator, 'vendor', {
+                        value: fp.browser.vendor,
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+
+                // 添加产品子版本信息
+                if ('productSub' in navigator) {
+                    Object.defineProperty(navigator, 'productSub', {
+                        value: fp.browser.productSub,
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+
+                // 添加供应商子版本信息
+                if ('vendorSub' in navigator) {
+                    Object.defineProperty(navigator, 'vendorSub', {
+                        value: fp.browser.vendorSub,
+                        configurable: true,
+                        enumerable: true
+                    });
+                }
+
             } catch (e) {
                 // 忽略错误，继续执行
             }
