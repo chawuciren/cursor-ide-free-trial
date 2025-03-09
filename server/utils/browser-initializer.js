@@ -4,6 +4,7 @@ const path = require('path');
 const delay = require('./delay');
 const HumanBehavior = require('./human-behavior');
 const FingerprintSimulator = require('./fingerprint-simulator');
+const FingerprintGenerator = require('./fingerprint-generator');
 const os = require('os');
 
 // 浏览器扩展配置
@@ -66,6 +67,7 @@ class BrowserInitializer {
         this.retryCount = 0;
         this.humanBehavior = new HumanBehavior();
         this.fingerprintSimulator = new FingerprintSimulator();
+        this.fingerprintGenerator = new FingerprintGenerator();
     }
 
     /**
@@ -77,7 +79,7 @@ class BrowserInitializer {
             try {
                 logger.info(`尝试初始化浏览器 (第 ${this.retryCount + 1} 次尝试)...`);
 
-                const fingerprint = await this.fingerprintSimulator.generateFingerprint();
+                const fingerprint = await this.fingerprintGenerator.generateFingerprint();
                 const launchOptions = await this._buildLaunchOptions(fingerprint);
                 
                 logger.info('正在启动浏览器...');

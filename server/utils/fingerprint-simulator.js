@@ -1,433 +1,9 @@
 const logger = require('./logger');
+const FingerprintGenerator = require('./fingerprint-generator');
 
 class FingerprintSimulator {
-    #versions = {
-        chrome: ['114.0.0.0', '115.0.0.0'],
-        firefox: ['108', '109', '110', '111', '112'],
-        safari: ['14.1.2', '15.0', '15.1', '15.2', '15.3']
-    };
-
-    #osVersions = {
-        win: ['10.0', '11.0'],
-        mac: ['10_15_7', '11_0_0', '12_0_0', '13_0_0'],
-        linux: ['x86_64', 'aarch64']
-    };
-
-    #cpuArchitectures = [
-        { arch: 'x86_64', bits: '64', wow64: false },
-        { arch: 'amd64', bits: '64', wow64: false },
-        { arch: 'x86', bits: '32', wow64: true },
-        { arch: 'arm64', bits: '64', wow64: false },
-        { arch: 'aarch64', bits: '64', wow64: false }
-    ];
-
-    #gpuVendors = [
-        {
-            vendor: 'Google Inc. (NVIDIA)',
-            renderer: 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1070 Direct3D11 vs_5_0 ps_5_0)',
-            webglVendor: 'NVIDIA Corporation',
-            webglRenderer: 'NVIDIA GeForce GTX 1070/PCIe/SSE2'
-        },
-        {
-            vendor: 'Google Inc. (NVIDIA)',
-            renderer: 'ANGLE (NVIDIA, NVIDIA RTX 3080 Direct3D11 vs_5_0 ps_5_0)',
-            webglVendor: 'NVIDIA Corporation',
-            webglRenderer: 'NVIDIA RTX 3080/PCIe/SSE2'
-        },
-        {
-            vendor: 'Google Inc. (AMD)',
-            renderer: 'ANGLE (AMD, AMD Radeon RX 6800 XT Direct3D11 vs_5_0 ps_5_0)',
-            webglVendor: 'AMD',
-            webglRenderer: 'AMD Radeon RX 6800 XT'
-        },
-        {
-            vendor: 'Intel Inc.',
-            renderer: 'Intel Iris Xe Graphics',
-            webglVendor: 'Intel',
-            webglRenderer: 'Intel(R) Iris(R) Xe Graphics'
-        },
-        {
-            vendor: 'Google Inc. (Apple)',
-            renderer: 'ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)',
-            webglVendor: 'Apple',
-            webglRenderer: 'Apple M1 Pro'
-        },
-        {
-            vendor: 'Google Inc. (Apple)',
-            renderer: 'ANGLE (Apple, Apple M2 Max, OpenGL 4.1)',
-            webglVendor: 'Apple',
-            webglRenderer: 'Apple M2 Max'
-        }
-    ];
-
-    #webglExtensions = [
-        'ANGLE_instanced_arrays',
-        'EXT_blend_minmax',
-        'EXT_color_buffer_half_float',
-        'EXT_disjoint_timer_query',
-        'EXT_float_blend',
-        'EXT_frag_depth',
-        'EXT_shader_texture_lod',
-        'EXT_texture_compression_bptc',
-        'EXT_texture_compression_rgtc',
-        'EXT_texture_filter_anisotropic',
-        'EXT_sRGB',
-        'KHR_parallel_shader_compile',
-        'OES_element_index_uint',
-        'OES_fbo_render_mipmap',
-        'OES_standard_derivatives',
-        'OES_texture_float',
-        'OES_texture_float_linear',
-        'OES_texture_half_float',
-        'OES_texture_half_float_linear',
-        'OES_vertex_array_object',
-        'WEBGL_color_buffer_float',
-        'WEBGL_compressed_texture_s3tc',
-        'WEBGL_compressed_texture_s3tc_srgb',
-        'WEBGL_debug_renderer_info',
-        'WEBGL_debug_shaders',
-        'WEBGL_depth_texture',
-        'WEBGL_draw_buffers',
-        'WEBGL_lose_context',
-        'WEBGL_multi_draw'
-    ];
-
-    #webglParameters = {
-        'MAX_TEXTURE_SIZE': [4096, 8192, 16384],
-        'MAX_VIEWPORT_DIMS': [[4096, 4096], [8192, 8192], [16384, 16384]],
-        'MAX_VERTEX_ATTRIBS': [16],
-        'MAX_VERTEX_UNIFORM_VECTORS': [4096],
-        'MAX_VARYING_VECTORS': [30],
-        'MAX_COMBINED_TEXTURE_IMAGE_UNITS': [32],
-        'MAX_VERTEX_TEXTURE_IMAGE_UNITS': [16],
-        'MAX_TEXTURE_IMAGE_UNITS': [16],
-        'MAX_FRAGMENT_UNIFORM_VECTORS': [1024],
-        'MAX_CUBE_MAP_TEXTURE_SIZE': [4096, 8192, 16384],
-        'MAX_RENDERBUFFER_SIZE': [4096, 8192, 16384],
-        'MAX_TEXTURE_MAX_ANISOTROPY_EXT': [8, 16]
-    };
-
-    #hardwareConcurrency = [4, 6, 8, 10, 12, 16, 24, 32];
-    #deviceMemory = [0.25, 0.5, 1, 2, 4, 8];
-
-    #languages = [
-        ['en-US', 'en'],
-        ['en-GB', 'en'],
-        ['en-CA', 'en-GB', 'en'],
-        ['zh-CN', 'zh'],
-        ['zh-TW', 'zh-CN', 'zh']
-    ];
-
-    #screenResolutions = [
-        { width: 1920, height: 1080 },
-        { width: 2560, height: 1440 },
-        { width: 3440, height: 1440 },
-        { width: 3840, height: 2160 },
-        { width: 1366, height: 768 },
-        { width: 1536, height: 864 },
-        { width: 1440, height: 900 },
-        { width: 1280, height: 720 }
-    ];
-
-    #timezones = [
-        'America/New_York',
-        'America/Los_Angeles',
-        'America/Chicago',
-        'Europe/London',
-        'Europe/Paris',
-        'Asia/Shanghai',
-        'Asia/Tokyo',
-        'Australia/Sydney'
-    ];
-
-    /**
-     * 获取随机数组项
-     * @private
-     */
-    #getRandomItem(array) {
-        return array[Math.floor(Math.random() * array.length)];
-    }
-
-    /**
-     * 生成指纹数据
-     * @returns {Object} 指纹数据
-     */
-    generateFingerprint() {
-        // 随机选择CPU架构
-        const cpu = this.#getRandomItem(this.#cpuArchitectures);
-        
-        // 随机选择GPU和WebGL信息
-        const gpu = this.#getRandomItem(this.#gpuVendors);
-        
-        // 随机选择硬件配置 - 修改为固定值
-        const hardwareConcurrency = this.#getRandomItem(this.#hardwareConcurrency);
-        const deviceMemory = this.#getRandomItem(this.#deviceMemory); // 从预定义数组中随机选择
-        
-        // 随机选择屏幕分辨率
-        const screen = this.#getRandomItem(this.#screenResolutions);
-        
-        // 随机选择WebGL参数
-        const webglParams = {};
-        for (const [param, values] of Object.entries(this.#webglParameters)) {
-            webglParams[param] = this.#getRandomItem(values);
-        }
-        
-        // 随机选择WebGL扩展子集
-        const webglExtensions = [...this.#webglExtensions]
-            .sort(() => Math.random() - 0.5)
-            .slice(0, Math.floor(Math.random() * 5) + 20); // 随机选择20-25个扩展
-
-        // 基础版本信息
-        const chromeVersion = this.#getRandomItem(this.#versions.chrome);
-        const majorVersion = chromeVersion.split('.')[0];
-        const brandVersion = '8';
-        const languages = this.#getRandomItem(this.#languages);
-
-        // 构建 accept-language
-        const acceptLanguage = languages.join(',') + ';q=0.9';
-
-        // 定义 userAgent
-        const userAgent = `Mozilla/5.0 (Windows NT 10.0; ${cpu.wow64 ? 'WOW64' : 'Win64'}; ${cpu.arch}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
-
-        // 构建字体列表 - 使用更完整的Windows默认字体
-        const fontList = [
-            'Arial', 'Arial Black', 'Arial Narrow', 'Bahnschrift', 'Calibri', 'Cambria', 
-            'Cambria Math', 'Candara', 'Comic Sans MS', 'Consolas', 'Constantia', 'Corbel',
-            'Courier New', 'Ebrima', 'Franklin Gothic Medium', 'Gabriola', 'Gadugi', 
-            'Georgia', 'HoloLens MDL2 Assets', 'Impact', 'Ink Free', 'Javanese Text',
-            'Leelawadee UI', 'Lucida Console', 'Lucida Sans Unicode', 'Malgun Gothic',
-            'Microsoft Himalaya', 'Microsoft JhengHei', 'Microsoft New Tai Lue',
-            'Microsoft PhagsPa', 'Microsoft Sans Serif', 'Microsoft YaHei', 'MingLiU-ExtB',
-            'Mongolian Baiti', 'MS Gothic', 'MV Boli', 'Myanmar Text', 'Nirmala UI',
-            'Palatino Linotype', 'Segoe MDL2 Assets', 'Segoe Print', 'Segoe Script',
-            'Segoe UI', 'Segoe UI Historic', 'Segoe UI Emoji', 'Segoe UI Symbol',
-            'SimSun', 'Sitka', 'Sylfaen', 'Symbol', 'Tahoma', 'Times New Roman',
-            'Trebuchet MS', 'Verdana', 'Webdings', 'Wingdings', 'Yu Gothic'
-        ].sort();
-
-        // 构建媒体设备
-        const mediaDevices = {
-            audioInputs: [
-                { deviceId: 'default', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
-                { deviceId: 'communications', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
-            ],
-            audioOutputs: [
-                { deviceId: 'default', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
-                { deviceId: 'communications', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
-            ],
-            videoInputs: []
-        };
-
-        // 构建插件和MIME类型
-        const mimeTypes = [
-            {
-                type: 'application/pdf',
-                suffixes: 'pdf',
-                description: 'Portable Document Format'
-            },
-            {
-                type: 'application/x-google-chrome-pdf',
-                suffixes: 'pdf',
-                description: 'Portable Document Format'
-            },
-            {
-                type: 'application/x-nacl',
-                suffixes: '',
-                description: 'Native Client Executable'
-            },
-            {
-                type: 'application/x-pnacl',
-                suffixes: '',
-                description: 'Portable Native Client Executable'
-            }
-        ];
-
-        const plugins = [
-            {
-                name: 'Chrome PDF Plugin',
-                filename: 'internal-pdf-viewer',
-                description: 'Portable Document Format',
-                mimeTypes: [mimeTypes[0]]
-            },
-            {
-                name: 'Chrome PDF Viewer',
-                filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
-                description: 'Portable Document Format',
-                mimeTypes: [mimeTypes[1]]
-            },
-            {
-                name: 'Native Client',
-                filename: 'internal-nacl-plugin',
-                description: '',
-                mimeTypes: [mimeTypes[2], mimeTypes[3]]
-            }
-        ];
-
-        // 构建语音列表
-        const voices = [
-            {
-                voiceURI: 'Microsoft David - English (United States)',
-                name: 'Microsoft David - English (United States)',
-                lang: 'en-US',
-                localService: true,
-                default: true
-            },
-            {
-                voiceURI: 'Microsoft Zira - English (United States)',
-                name: 'Microsoft Zira - English (United States)',
-                lang: 'en-US',
-                localService: true,
-                default: false
-            }
-        ];
-
-        // 更新 WebGL 参数
-        const webGLParams = {
-            contextName: 'webgl',
-            version: 'WebGL 1.0',
-            shadingLanguageVersion: 'WebGL GLSL ES 1.0',
-            vendor: gpu.webglVendor,
-            renderer: gpu.webglRenderer,
-            unmaskedVendor: gpu.webglVendor,
-            unmaskedRenderer: gpu.webglRenderer,
-            antialias: Math.random() > 0.5,
-            angle: gpu.renderer.includes('ANGLE') ? gpu.renderer.split('ANGLE ')[1].slice(1, -1) : '',
-            majorPerformanceCaveat: false,
-            params: {
-                antialias: Math.random() > 0.5,
-                alpha: true,
-                depth: true,
-                failIfMajorPerformanceCaveat: false,
-                powerPreference: 'high-performance',
-                premultipliedAlpha: true,
-                preserveDrawingBuffer: false,
-                stencil: true,
-                desynchronized: false,
-                xrCompatible: false
-            },
-            extensions: webglExtensions,
-            parameters: webglParams
-        };
-
-        // 构建 Canvas 参数
-        const canvasParams = {
-            textBaseline: 'alphabetic',
-            textAlign: 'start',
-            font: '14px Arial',
-            fillStyle: '#000000',
-            strokeStyle: '#000000',
-            lineWidth: 1,
-            lineCap: 'butt',
-            lineJoin: 'miter',
-            miterLimit: 10,
-            shadowBlur: 0,
-            shadowColor: 'rgba(0, 0, 0, 0)',
-            shadowOffsetX: 0,
-            shadowOffsetY: 0,
-            globalAlpha: 1,
-            globalCompositeOperation: 'source-over',
-            imageSmoothingEnabled: true,
-            imageSmoothingQuality: 'high',
-            filter: 'none',
-            direction: 'ltr',
-            letterSpacing: '0px',
-            fontKerning: 'auto',
-            fontStretch: 'normal',
-            fontVariantCaps: 'normal',
-            textRendering: 'auto',
-            wordSpacing: '0px'
-        };
-
-        return {
-            // 浏览器信息
-            browser: {
-                version: chromeVersion,
-                majorVersion,
-                userAgent,
-                brands: [
-                    { brand: 'Google Chrome', version: majorVersion },
-                    { brand: 'Not=A?Brand', version: brandVersion },
-                    { brand: 'Chromium', version: majorVersion }
-                ],
-                acceptLanguage,
-                languages,
-                platform: 'Win32',
-                platformVersion: '10.0.0',
-                architecture: cpu.arch,
-                bitness: cpu.bits,
-                wow64: cpu.wow64,
-                mobile: false,
-                model: '',
-                oscpu: 'Windows NT 10.0; Win64; x64',
-                connectionRtt: 50,
-                deviceMemory,
-                hardwareConcurrency,
-                maxTouchPoints: 0,
-                pdfViewerEnabled: true
-            },
-
-            // 设备信息
-            device: {
-                screen: {
-                    width: screen.width,
-                    height: screen.height,
-                    availWidth: screen.width,
-                    availHeight: screen.height - 40,
-                    availTop: 0,
-                    availLeft: 0,
-                    colorDepth: 24,
-                    pixelDepth: 24,
-                    devicePixelRatio: 1,
-                    orientation: {
-                        type: 'landscape-primary',
-                        angle: 0
-                    },
-                    isExtended: false
-                },
-                gpu: {
-                    vendor: gpu.webglVendor,
-                    renderer: gpu.webglRenderer
-                },
-                mediaDevices,
-                plugins,
-                mimeTypes,
-                fonts: fontList,
-                voices,
-                webgl: webGLParams,
-                canvas: canvasParams
-            },
-
-            // 网络信息
-            network: {
-                type: '4g',
-                effectiveType: '4g',
-                downlink: 10,
-                downlinkMax: 10,
-                rtt: 50,
-                saveData: false,
-                onchange: null
-            },
-
-            // 时区信息
-            timezone: {
-                id: this.#getRandomItem(this.#timezones),
-                offset: -480
-            },
-
-            // 电池信息
-            battery: {
-                charging: true,
-                chargingTime: 0,
-                dischargingTime: Infinity,
-                level: 1
-            },
-
-            // 位置信息
-            location: {
-                lng: 116.3883,  // 使用固定经度（北京）
-                lat: 39.9289    // 使用固定纬度（北京）
-            }
-        };
+    constructor() {
+        this.fingerprintGenerator = new FingerprintGenerator();
     }
 
     /**
@@ -457,12 +33,12 @@ class FingerprintSimulator {
     async #applyCDPOverrides(client, fingerprint) {
         try {
             // 启用所有之前注释的配置
-            await this.#cdpHideAutomationMark(client);
+            await this.#cdpHideAutomationMark(client, fingerprint);
             await this.#cdpSetUserAgent(client, fingerprint);
             await this.#cdpSetLocale(client, fingerprint);
             await this.#cdpSetTimezone(client, fingerprint);
             await this.#cdpSetDeviceMetrics(client, fingerprint);
-            await this.#cdpSetPerformanceMetrics(client);
+            await this.#cdpSetPerformanceMetrics(client, fingerprint);
 
         } catch (error) {
             logger.error('CDP覆盖设置失败:', error.message);
@@ -1165,7 +741,7 @@ class FingerprintSimulator {
     /**
      * 设置隐藏一些自动化标记
      */
-    async #cdpHideAutomationMark(client) {
+    async #cdpHideAutomationMark(client, fingerprint) {
         // 添加额外的 CDP 配置
         await client.send('Page.setBypassCSP', { enabled: true });
         await client.send('Network.setBypassServiceWorker', { bypass: true });
@@ -1249,15 +825,22 @@ class FingerprintSimulator {
      * 设置性能指标
      * @private
      */
-    async #cdpSetPerformanceMetrics(client) {
-        await client.send('Emulation.setCPUThrottlingRate', { rate: 1 })
-            .catch(() => {});
+    async #cdpSetPerformanceMetrics(client, fingerprint) {
+        // 设置CPU性能
+        await client.send('Emulation.setCPUThrottlingRate', { 
+            rate: 1 
+        }).catch(() => {});
+
+        // 启用网络
         await client.send('Network.enable').catch(() => {});
+
+        // 设置网络条件
         await client.send('Network.emulateNetworkConditions', {
             offline: false,
-            latency: 20,
-            downloadThroughput: 1024 * 1024 * 10,
-            uploadThroughput: 1024 * 1024 * 5
+            latency: fingerprint.network.rtt || 50,
+            // 将 Mbps 转换为 bytes/s (1 Mbps = 131072 bytes/s)
+            downloadThroughput: (fingerprint.network.downlink || 10) * 131072,
+            uploadThroughput: ((fingerprint.network.downlink || 10) / 2) * 131072
         }).catch(() => {});
     }
 }
