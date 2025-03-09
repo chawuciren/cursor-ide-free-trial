@@ -77,22 +77,19 @@ class BrowserInitializer {
             try {
                 logger.info(`尝试初始化浏览器 (第 ${this.retryCount + 1} 次尝试)...`);
 
-                const launchOptions = await this._buildLaunchOptions();
+                const fingerprint = await this.fingerprintSimulator.generateFingerprint();
+                const launchOptions = await this._buildLaunchOptions(fingerprint);
                 
                 logger.info('正在启动浏览器...');
                 const browser = await puppeteer.launch(launchOptions);
                 const page = await browser.newPage();
 
                 // 重置浏览器指纹
-                const fingerprint = await this.fingerprintSimulator.generateFingerprint();
                 await this.fingerprintSimulator.resetFingerprint(page, fingerprint);
-                
-                // 配置扩展
-                // await this.configureExtensions(browser);
                 
                 // 检查指纹
                 if (this.config.browser.checkFingerprint) {
-                    const result = await this._checkFingerprint(browser);
+                    const result = await this._checkFingerprint(browser, fingerprint);
                     if (!result.success) {
                         await browser.close();
                         this.retryCount++;
@@ -126,7 +123,7 @@ class BrowserInitializer {
      * 构建浏览器启动选项
      * @returns {Promise<Object>} 启动选项配置
      */
-    async _buildLaunchOptions() {
+    async _buildLaunchOptions(fingerprint) {
         const extensionPath = path.join(
             getExtensionsDir(),
             EXTENSIONS.FINGERPRINT_DEFENDER.id,
@@ -148,6 +145,7 @@ class BrowserInitializer {
                 "--window-position=0,0",
                 "--ignore-certificate-errors",
                 "--ignore-certificate-errors-spki-list",
+                "--user-agent=" + fingerprint.browser.userAgent,
             ],
             defaultViewport: null,
             ignoreDefaultArgs: [
@@ -201,13 +199,12 @@ class BrowserInitializer {
      * @param {Browser} browser Puppeteer浏览器实例
      * @returns {Promise<{success: boolean, reason?: string}>}
      */
-    async _checkFingerprint(browser) {
+    async _checkFingerprint(browser, fingerprint) {
         logger.info('开始进行浏览器指纹检查...');
         const fingerprintPage = await browser.newPage();
         
         try {
             // 使用 FingerprintSimulator 重置检查页面的指纹
-            const fingerprint = await this.fingerprintSimulator.generateFingerprint();
             await this.fingerprintSimulator.resetFingerprint(fingerprintPage, fingerprint);
             
             // 先使用Intoli进行基础检查

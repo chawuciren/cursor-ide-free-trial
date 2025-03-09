@@ -426,28 +426,6 @@ class FingerprintSimulator {
             location: {
                 lng: 116.3883,  // 使用固定经度（北京）
                 lat: 39.9289    // 使用固定纬度（北京）
-            },
-
-            // HTTP 头信息
-            headers: {
-                'accept': 'application/json, text/plain, */*',
-                'accept-encoding': 'gzip, deflate, br',
-                'accept-language': acceptLanguage,
-                'cache-control': 'no-cache',
-                'content-type': 'application/json',
-                'origin': 'https://abrahamjuliot.github.io',
-                'pragma': 'no-cache',
-                'referer': 'https://abrahamjuliot.github.io/',
-                'sec-ch-ua': `"Google Chrome";v="${majorVersion}", "Not=A?Brand";v="${brandVersion}", "Chromium";v="${majorVersion}"`,
-                'sec-ch-ua-arch': `"${cpu.arch}"`,
-                'sec-ch-ua-bitness': `"${cpu.bits}"`,
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"Windows"',
-                'sec-ch-ua-platform-version': '"10.0.0"',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'cross-site',
-                'user-agent': userAgent
             }
         };
     }
@@ -1225,11 +1203,6 @@ class FingerprintSimulator {
         // 设置浏览器级别的 userAgent
         await client.send('Emulation.setUserAgentOverride', userAgentInfo);
         await client.send('Network.setUserAgentOverride', userAgentInfo);
-
-        设置一致的请求头
-        await client.send('Network.setExtraHTTPHeaders', {
-            headers: fingerprint.headers
-        });
     }
 
     /**
