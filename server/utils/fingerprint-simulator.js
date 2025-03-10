@@ -38,6 +38,7 @@ class FingerprintSimulator {
             await this.#cdpSetLocale(client, fingerprint);
             await this.#cdpSetTimezone(client, fingerprint);
             await this.#cdpSetDeviceMetrics(client, fingerprint);
+            await this.#cdpSetWebGLAndGPU(client, fingerprint);
             await this.#cdpSetPerformanceMetrics(client, fingerprint);
             await this.#cdpSetMemoryMetrics(client, fingerprint);
             await this.#cdpSetStorageMetrics(client, fingerprint);
@@ -56,10 +57,7 @@ class FingerprintSimulator {
         try {
             await this.#evaluateCleanWebDriverBypass(page);
             await this.#evaluateInjectWebGLProtection(page, fingerprint);
-            await this.#evaluateInjectCanvasProtection(page, fingerprint);
             await this.#evaluateInjectWebAudioProtection(page, fingerprint);
-            // 移除 JS 注入的存储保护，改用 CDP
-            // await this.#evaluateInjectStorageProtection(page, fingerprint);
         } catch (error) {
             logger.error('evaluate设置指纹保护失败:', error.message);
             logger.debug('evaluate错误详情:', error);
@@ -118,239 +116,228 @@ class FingerprintSimulator {
     }
 
     /**
-     * 注入 WebGL
+     * 注入增强的WebGL保护
      */
     async #evaluateInjectWebGLProtection(page, fingerprint) {
-        await page.evaluateOnNewDocument(() => {
-            if (!window.WebGLRenderingContext) return;
-
-            // 创建WebGL上下文代理
-            const createWebGLProxy = (gl) => {
-                const vendorInfo = {
-                    [37445]: 'Google Inc. (NVIDIA)', // UNMASKED_VENDOR_WEBGL
-                    [37446]: 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1070 Direct3D11 vs_5_0 ps_5_0)', // UNMASKED_RENDERER_WEBGL
-                    [7936]: 'WebKit', // VENDOR
-                    [7937]: 'WebKit WebGL', // RENDERER
-                    [7938]: 'WebGL 1.0 (OpenGL ES 2.0 Chromium)', // VERSION
-                    [35724]: 'WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)', // SHADING_LANGUAGE_VERSION
-                    [3379]: 16384, // MAX_TEXTURE_SIZE
-                    [3386]: 32, // MAX_VERTEX_ATTRIBS
-                    [3410]: 8, // SUBPIXEL_BITS
-                    [3411]: 8, // RED_BITS
-                    [3412]: 8, // GREEN_BITS
-                    [3413]: 8, // BLUE_BITS
-                    [3414]: 8, // ALPHA_BITS
-                    [3415]: 24, // DEPTH_BITS
-                    [3416]: 8 // STENCIL_BITS
-                };
-
-                const debugInfo = {
-                    UNMASKED_VENDOR_WEBGL: 37445,
-                    UNMASKED_RENDERER_WEBGL: 37446
-                };
-
-                return new Proxy(gl, {
-                    get(target, prop) {
-                        if (prop === 'getParameter') {
-                            return new Proxy(target.getParameter, {
-                                apply(target, thisArg, args) {
-                                    const param = args[0];
-                                    if (param in vendorInfo) {
-                                        return vendorInfo[param];
-                                    }
-                                    return Reflect.apply(target, thisArg, args);
-                                }
-                            });
-                        }
-
-                        if (prop === 'getExtension') {
-                            return new Proxy(target.getExtension, {
-                                apply(target, thisArg, args) {
-                                    const name = args[0];
-                                    if (name === 'WEBGL_debug_renderer_info') {
-                                        return debugInfo;
-                                    }
-                                    return Reflect.apply(target, thisArg, args);
-                                }
-                            });
-                        }
-
-                        return Reflect.get(target, prop);
-                    }
-                });
-            };
-
-            // 创建Canvas元素代理
-            const CanvasProxy = new Proxy(HTMLCanvasElement.prototype, {
-                get(target, prop) {
-                    if (prop === 'getContext') {
-                        return new Proxy(target.getContext, {
-                            apply(target, thisArg, args) {
-                                const context = Reflect.apply(target, thisArg, args);
-                                const contextType = args[0];
+        const gpu = fingerprint.device.gpu;
+        await page.evaluateOnNewDocument((gpu) => {
+            try {
+                // 保存原始的createElement方法
+                const originalCreateElement = document.createElement.bind(document);
+                
+                // 重写createElement以在创建时注入我们的修改
+                document.createElement = function(tagName) {
+                    const element = originalCreateElement(tagName);
+                    
+                    if (tagName.toLowerCase() === 'canvas') {
+                        const getContextProxy = function(contextType, contextAttributes) {
+                            // 应用WebGL上下文属性
+                            if (contextType === 'webgl' || contextType === 'experimental-webgl' || contextType === 'webgl2') {
+                                contextAttributes = Object.assign({}, gpu.webgl.contextAttributes, contextAttributes || {});
+                            }
+                            
+                            const ctx = element.getContext.call(this, contextType, contextAttributes);
+                            if (!ctx) return null;
+                            
+                            if (contextType === 'webgl' || contextType === 'experimental-webgl' || contextType === 'webgl2') {
+                                // 保存原始WebGL方法
+                                const originalGetParameter = ctx.getParameter.bind(ctx);
+                                const originalGetExtension = ctx.getExtension.bind(ctx);
+                                const originalGetSupportedExtensions = ctx.getSupportedExtensions.bind(ctx);
                                 
-                                if (context && (contextType === 'webgl' || contextType === 'experimental-webgl')) {
-                                    return createWebGLProxy(context);
-                                }
-                                return context;
+                                // 重写getParameter方法
+                                ctx.getParameter = function(parameter) {
+                                    // 使用从指纹生成器传入的参数
+                                    if (parameter in gpu.webgl.parameters) {
+                                        return gpu.webgl.parameters[parameter];
+                                    }
+
+                                    const result = originalGetParameter(parameter);
+                                    return result;
+                                };
+                                
+                                // 重写getExtension方法
+                                ctx.getExtension = function(name) {
+                                    if (name === 'WEBGL_debug_renderer_info') {
+                                        const extension = originalGetExtension(name);
+                                        if (!extension) return null;
+                                        
+                                        extension.UNMASKED_VENDOR_WEBGL = 37445;
+                                        extension.UNMASKED_RENDERER_WEBGL = 37446;
+                                        return extension;
+                                    }
+                                    return originalGetExtension(name);
+                                };
+                                
+                                // 重写getSupportedExtensions方法
+                                ctx.getSupportedExtensions = function() {
+                                    // 使用从指纹生成器传入的扩展列表
+                                    return gpu.webgl.extensions;
+                                };
                             }
+                            return ctx;
+                        };
+
+                        // 保持原始的函数属性
+                        Object.defineProperties(getContextProxy, {
+                            name: { value: 'getContext' },
+                            length: { value: 2 }
                         });
+                        
+                        element.getContext = getContextProxy;
                     }
-                    return Reflect.get(target, prop);
-                }
-            });
+                    
+                    return element;
+                };
 
-            // 保持原始原型引用
-            const originalProto = HTMLCanvasElement.prototype;
+                // 保持原始createElement的属性
+                Object.defineProperties(document.createElement, {
+                    name: { value: 'createElement' },
+                    length: { value: 1 }
+                });
 
-            // 使用Object.defineProperty来设置代理
-            Object.defineProperty(HTMLCanvasElement, 'prototype', {
-                value: CanvasProxy,
-                writable: false,
-                enumerable: false,
-                configurable: false
-            });
-
-            // 保持toString的一致性
-            const originalToString = Function.prototype.toString;
-            Function.prototype.toString = new Proxy(originalToString, {
-                apply(target, thisArg, args) {
-                    if (thisArg === CanvasProxy.getContext) {
-                        return Reflect.apply(target, originalProto.getContext, args);
-                    }
-                    return Reflect.apply(target, thisArg, args);
-                }
-            });
-
-            // 保护WebGLRenderingContext原型
-            const WebGLProto = WebGLRenderingContext.prototype;
-            const WebGLProxyHandler = {
-                get(target, prop) {
-                    const value = Reflect.get(target, prop);
-                    if (typeof value === 'function') {
-                        return new Proxy(value, {
-                            apply(target, thisArg, args) {
-                                return Reflect.apply(target, thisArg, args);
-                            }
-                        });
-                    }
-                    return value;
-                }
-            };
-
-            Object.defineProperty(WebGLRenderingContext, 'prototype', {
-                value: new Proxy(WebGLProto, WebGLProxyHandler),
-                writable: false,
-                enumerable: false,
-                configurable: false
-            });
-        });
+            } catch (error) {
+                console.warn('WebGL protection initialization failed', error);
+            }
+        }, gpu);
     }
 
     /**
-     * 注入 Canvas
+     * 注入增强的Canvas保护
      */
     async #evaluateInjectCanvasProtection(page, fingerprint) {
         await page.evaluateOnNewDocument(() => {
-            const modifyPixel = (data) => {
-                // 使用确定性的像素修改方法
-                const noise = Math.sin(data.length) * 2 + 1;
-                for (let i = 0; i < data.length; i += 4) {
-                    data[i] = Math.max(0, Math.min(255, data[i] + (noise % 1)));
-                    data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + (noise % 1)));
-                    data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + (noise % 1)));
-                }
+            // 保存原始方法
+            const originalGetContext = HTMLCanvasElement.prototype.getContext;
+            const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+            const originalToBlob = HTMLCanvasElement.prototype.toBlob;
+
+            // 硬件特征模拟参数
+            const hardwareCharacteristics = {
+                antialiasing: Math.random() > 0.5,
+                subpixelAccuracy: Math.random() * 0.3 + 0.7, // 0.7-1.0
+                colorDepth: 8,
+                renderingQuality: Math.random() * 0.2 + 0.8 // 0.8-1.0
             };
 
-            // 创建Context2D代理
-            const createContext2DProxy = (context) => {
+            // 模拟字体渲染差异
+            const fontCharacteristics = {
+                kerning: Math.random() * 0.2 - 0.1,        // -0.1 to 0.1
+                letterSpacing: Math.random() * 0.1,        // 0 to 0.1
+                baselineShift: Math.random() * 0.2 - 0.1   // -0.1 to 0.1
+            };
+
+            // 像素处理函数
+            const processPixels = (imageData, renderingContext) => {
+                const { data } = imageData;
+                const noise = new Float32Array(3);
+                
+                // 生成基于画布内容的噪声
+                const hash = Array.from(data).reduce((h, b) => (h * 31 + b) & 0xFFFFFFFF, 0);
+                const seededRandom = () => {
+                    const x = Math.sin(hash++ * 31.1234) * 10000;
+                    return x - Math.floor(x);
+                };
+
+                // 应用硬件特征模拟
+                for (let i = 0; i < data.length; i += 4) {
+                    // 子像素渲染模拟
+                    const subpixelOffset = seededRandom() * hardwareCharacteristics.subpixelAccuracy;
+                    
+                    // 应用抗锯齿效果
+                    if (hardwareCharacteristics.antialiasing) {
+                        const neighborInfluence = 0.1;
+                        if (i > 0 && i < data.length - 4) {
+                            data[i] = Math.round((data[i] * (1 - neighborInfluence) + 
+                                            (data[i-4] + data[i+4]) * neighborInfluence / 2));
+                            data[i+1] = Math.round((data[i+1] * (1 - neighborInfluence) + 
+                                                (data[i-3] + data[i+5]) * neighborInfluence / 2));
+                            data[i+2] = Math.round((data[i+2] * (1 - neighborInfluence) + 
+                                                (data[i-2] + data[i+6]) * neighborInfluence / 2));
+                        }
+                    }
+
+                    // 应用渲染质量特征
+                    const qualityFactor = hardwareCharacteristics.renderingQuality + 
+                                        (seededRandom() - 0.5) * 0.1;
+                    
+                    data[i] = Math.max(0, Math.min(255, Math.round(data[i] * qualityFactor + subpixelOffset)));
+                    data[i + 1] = Math.max(0, Math.min(255, Math.round(data[i + 1] * qualityFactor)));
+                    data[i + 2] = Math.max(0, Math.min(255, Math.round(data[i + 2] * qualityFactor - subpixelOffset)));
+                    // Alpha通道保持不变
+                }
+
+                return imageData;
+            };
+
+            // 创建2D上下文代理
+            const create2DContextProxy = (context) => {
                 return new Proxy(context, {
                     get(target, prop) {
-                        if (prop === 'getImageData') {
-                            return new Proxy(target.getImageData, {
-                                apply(target, thisArg, args) {
-                                    const imageData = Reflect.apply(target, thisArg, args);
-                                    modifyPixel(imageData.data);
-                                    return imageData;
+                        const value = target[prop];
+                        
+                        if (typeof value === 'function') {
+                            return function(...args) {
+                                // 处理文本渲染
+                                if (prop === 'fillText' || prop === 'strokeText') {
+                                    const [text, x, y, ...rest] = args;
+                                    // 应用字体渲染特征
+                                    const baselineOffset = y + fontCharacteristics.baselineShift;
+                                    const letterSpacingValue = parseFloat(target.letterSpacing || 0) + 
+                                                            fontCharacteristics.letterSpacing;
+                                    
+                                    target.letterSpacing = `${letterSpacingValue}px`;
+                                    return value.call(target, text, x, baselineOffset, ...rest);
                                 }
-                            });
+                                
+                                // 处理图像数据操作
+                                if (prop === 'getImageData') {
+                                    const imageData = value.apply(target, args);
+                                    return processPixels(imageData, target);
+                                }
+                                
+                                return value.apply(target, args);
+                            };
                         }
-                        return Reflect.get(target, prop);
+                        
+                        return value;
                     }
                 });
             };
 
-            // 创建Canvas元素代理
-            const CanvasProxy = new Proxy(HTMLCanvasElement.prototype, {
-                get(target, prop) {
-                    if (prop === 'getContext') {
-                        return new Proxy(target.getContext, {
-                            apply(target, thisArg, args) {
-                                const context = Reflect.apply(target, thisArg, args);
-                                if (context && args[0] === '2d') {
-                                    return createContext2DProxy(context);
-                                }
-                                return context;
-                            }
-                        });
-                    }
-                    
-                    if (prop === 'toDataURL') {
-                        return new Proxy(target.toDataURL, {
-                            apply(target, thisArg, args) {
-                                const context = thisArg.getContext('2d');
-                                if (context) {
-                                    const imageData = context.getImageData(0, 0, thisArg.width, thisArg.height);
-                                    modifyPixel(imageData.data);
-                                    context.putImageData(imageData, 0, 0);
-                                }
-                                return Reflect.apply(target, thisArg, args);
-                            }
-                        });
-                    }
+            // 重写getContext方法
+            HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes) {
+                const ctx = originalGetContext.call(this, contextType, contextAttributes);
+                if (!ctx) return null;
 
-                    if (prop === 'toBlob') {
-                        return new Proxy(target.toBlob, {
-                            apply(target, thisArg, args) {
-                                const [callback, ...otherArgs] = args;
-                                const context = thisArg.getContext('2d');
-                                if (context) {
-                                    const imageData = context.getImageData(0, 0, thisArg.width, thisArg.height);
-                                    modifyPixel(imageData.data);
-                                    context.putImageData(imageData, 0, 0);
-                                }
-                                return Reflect.apply(target, thisArg, [callback, ...otherArgs]);
-                            }
-                        });
-                    }
-
-                    return Reflect.get(target, prop);
+                if (contextType === '2d') {
+                    return create2DContextProxy(ctx);
                 }
-            });
+                
+                return ctx;
+            };
 
-            // 保持原始原型引用
-            const originalProto = HTMLCanvasElement.prototype;
-
-            // 使用Object.defineProperty来设置代理
-            Object.defineProperty(HTMLCanvasElement, 'prototype', {
-                value: CanvasProxy,
-                writable: false,
-                enumerable: false,
-                configurable: false
-            });
-
-            // 保持toString的一致性
-            const originalToString = Function.prototype.toString;
-            Function.prototype.toString = new Proxy(originalToString, {
-                apply(target, thisArg, args) {
-                    if (thisArg === CanvasProxy.getContext ||
-                        thisArg === CanvasProxy.toDataURL ||
-                        thisArg === CanvasProxy.toBlob) {
-                        return Reflect.apply(target, originalProto[thisArg.name], args);
-                    }
-                    return Reflect.apply(target, thisArg, args);
+            // 重写toDataURL方法
+            HTMLCanvasElement.prototype.toDataURL = function(...args) {
+                const context = this.getContext('2d');
+                if (context) {
+                    const imageData = context.getImageData(0, 0, this.width, this.height);
+                    processPixels(imageData, context);
+                    context.putImageData(imageData, 0, 0);
                 }
-            });
+                return originalToDataURL.apply(this, args);
+            };
+
+            // 重写toBlob方法
+            HTMLCanvasElement.prototype.toBlob = function(callback, ...args) {
+                const context = this.getContext('2d');
+                if (context) {
+                    const imageData = context.getImageData(0, 0, this.width, this.height);
+                    processPixels(imageData, context);
+                    context.putImageData(imageData, 0, 0);
+                }
+                return originalToBlob.call(this, callback, ...args);
+            };
         });
     }
 
@@ -378,139 +365,6 @@ class FingerprintSimulator {
                 }
             }
         });
-    }
-
-    /**
-     * 注入存储性能模拟
-     * @private
-     */
-    async #evaluateInjectStorageProtection(page, fingerprint) {
-        const storage = fingerprint.device.storage;
-        
-        // 1. 设置存储配额
-        await page.evaluate((storageInfo) => {
-            // 模拟 navigator.storage API
-            if (navigator.storage) {
-                const originalEstimate = navigator.storage.estimate;
-                navigator.storage.estimate = async () => ({
-                    quota: storageInfo.quota,
-                    usage: storageInfo.usage,
-                    persistent: storageInfo.persistent,
-                    temporary: storageInfo.temporary
-                });
-
-                const originalPersist = navigator.storage.persist;
-                navigator.storage.persist = async () => storageInfo.persistent;
-
-                const originalPersisted = navigator.storage.persisted;
-                navigator.storage.persisted = async () => storageInfo.persistent;
-            }
-
-            // 模拟 webkitRequestFileSystem API
-            if (window.webkitRequestFileSystem) {
-                const originalRequestFS = window.webkitRequestFileSystem;
-                window.webkitRequestFileSystem = (type, size, successCallback, errorCallback) => {
-                    // 模拟 I/O 延迟
-                    setTimeout(() => {
-                        if (size > storageInfo.quota) {
-                            errorCallback(new Error('Quota exceeded'));
-                            return;
-                        }
-                        originalRequestFS(type, size, successCallback, errorCallback);
-                    }, storageInfo.ioTiming.seekLatencyMs + storageInfo.ioTiming.readLatencyMs);
-                };
-            }
-
-            // 模拟 IndexedDB 性能
-            if (window.indexedDB) {
-                const originalIndexedDB = window.indexedDB;
-                window.indexedDB = new Proxy(originalIndexedDB, {
-                    get: (target, prop) => {
-                        const original = target[prop];
-                        if (typeof original === 'function') {
-                            return new Proxy(original, {
-                                apply: (target, thisArg, args) => {
-                                    // 模拟 I/O 延迟
-                                    return new Promise((resolve) => {
-                                        setTimeout(() => {
-                                            resolve(Reflect.apply(target, thisArg, args));
-                                        }, storageInfo.ioTiming.readLatencyMs);
-                                    });
-                                }
-                            });
-                        }
-                        return original;
-                    }
-                });
-            }
-
-            // 模拟 localStorage 和 sessionStorage 性能
-            const createStorageProxy = (storage) => {
-                return new Proxy(storage, {
-                    get: (target, prop) => {
-                        const original = target[prop];
-                        if (typeof original === 'function') {
-                            return new Proxy(original, {
-                                apply: (target, thisArg, args) => {
-                                    // 模拟 I/O 延迟
-                                    const delay = prop === 'getItem' ? 
-                                        storageInfo.ioTiming.readLatencyMs : 
-                                        storageInfo.ioTiming.writeLatencyMs;
-                                    
-                                    return new Promise((resolve) => {
-                                        setTimeout(() => {
-                                            resolve(Reflect.apply(target, thisArg, args));
-                                        }, delay);
-                                    });
-                                }
-                            });
-                        }
-                        return original;
-                    }
-                });
-            };
-
-            if (window.localStorage) {
-                window.localStorage = createStorageProxy(window.localStorage);
-            }
-            if (window.sessionStorage) {
-                window.sessionStorage = createStorageProxy(window.sessionStorage);
-            }
-
-            // 模拟 File API 性能
-            if (window.File && window.FileReader && window.FileList && window.Blob) {
-                const originalFileReader = window.FileReader;
-                window.FileReader = class extends originalFileReader {
-                    constructor() {
-                        super();
-                        const methods = ['readAsArrayBuffer', 'readAsBinaryString', 'readAsDataURL', 'readAsText'];
-                        methods.forEach(method => {
-                            const original = this[method];
-                            this[method] = function(...args) {
-                                setTimeout(() => {
-                                    original.apply(this, args);
-                                }, storageInfo.ioTiming.readLatencyMs);
-                            };
-                        });
-                    }
-                };
-            }
-        }, storage);
-
-        // 2. 设置存储性能特征
-        await page.evaluate((storageInfo) => {
-            // 注入性能特征检测结果
-            if (window.performance && window.performance.memory) {
-                const originalNow = performance.now;
-                performance.now = function() {
-                    const baseTime = originalNow.call(performance);
-                    // 根据存储类型添加特征性延迟
-                    const storageLatency = storageInfo.ioTiming.readLatencyMs + 
-                                         storageInfo.ioTiming.writeLatencyMs;
-                    return baseTime + (Math.random() * storageLatency);
-                };
-            }
-        }, storage);
     }
 
     /**
@@ -597,24 +451,150 @@ class FingerprintSimulator {
     }
 
     /**
+     * 设置 WebGL 和 GPU 相关配置
+     * @private
+     */
+    async #cdpSetWebGLAndGPU(client, fingerprint) {
+        const gpu = fingerprint.device.gpu;
+        try {
+            // 1. 设置 WebGL 参数
+            await client.send('Browser.setWebGLOverride', {
+                vendor: gpu.webgl.vendor,
+                renderer: gpu.webgl.renderer,
+                version: gpu.webgl.version,
+                shadingLanguageVersion: gpu.webgl.shadingLanguageVersion,
+                extensions: gpu.webgl.extensions,
+                parameters: gpu.webgl.parameters
+            }).catch(() => {});
+
+            // 2. 设置 GPU 信息
+            await client.send('Browser.setGPUInfo', {
+                vendorId: this.#getGPUVendorId(gpu.webgl.vendor),
+                deviceId: this.#getGPUDeviceId(gpu.webgl.renderer),
+                vendorString: gpu.vendor,
+                deviceString: gpu.renderer,
+                driverVersion: this.#getGPUDriverVersion(gpu.webgl.renderer),
+                driverDate: "",
+                vulkanVersion: "1.3.0",
+                machineModelName: "",
+                machineModelVersion: "",
+                glVersion: gpu.webgl.version,
+                glslVersion: gpu.webgl.shadingLanguageVersion,
+                capabilities: {
+                    hasDualSourceBlending: true,
+                    hasETC2TextureCompression: true,
+                    hasS3TCTextureCompression: true,
+                    hasASTCTextureCompression: true,
+                    hasChromiumImageDecode: true,
+                    hasChromiumImageResize: true,
+                    maxTextureSize: gpu.webgl.parameters.MAX_TEXTURE_SIZE || 16384,
+                    maxRenderBufferSize: gpu.webgl.parameters.MAX_RENDERBUFFER_SIZE || 16384,
+                    max3DTextureSize: gpu.webgl.parameters.MAX_3D_TEXTURE_SIZE || 2048,
+                    maxArrayTextureLayers: gpu.webgl.parameters.MAX_ARRAY_TEXTURE_LAYERS || 2048,
+                    maxTextureFilterAnisotropy: gpu.webgl.parameters.MAX_TEXTURE_MAX_ANISOTROPY_EXT || 16,
+                    vertexShaderBits: 32,
+                    fragmentShaderBits: 32,
+                    maxVaryingVectors: gpu.webgl.parameters.MAX_VARYING_VECTORS || 32,
+                    maxVertexAttribs: gpu.webgl.parameters.MAX_VERTEX_ATTRIBS || 16,
+                    maxVertexUniformVectors: gpu.webgl.parameters.MAX_VERTEX_UNIFORM_VECTORS || 4096,
+                    maxFragmentUniformVectors: gpu.webgl.parameters.MAX_FRAGMENT_UNIFORM_VECTORS || 1024
+                }
+            }).catch(() => {});
+
+            // 3. 设置 ANGLE 图形后端
+            await client.send('Browser.setANGLEGraphicsBackend', {
+                backendType: 'direct3d11',  // 或 'opengl', 'vulkan' 等
+                enableFeatures: [
+                    'depth_texture',
+                    'draw_buffers',
+                    'texture_float',
+                    'texture_half_float',
+                    'vertex_array_object'
+                ]
+            }).catch(() => {});
+
+            // 4. 注入 WebGL 参数
+            await client.send('Runtime.evaluate', {
+                expression: `
+                    (() => {
+                        // 设置 WEBGL_debug_renderer_info 扩展的值
+                        const originalGetExtension = WebGLRenderingContext.prototype.getExtension;
+                        WebGLRenderingContext.prototype.getExtension = function(name) {
+                            if (name === 'WEBGL_debug_renderer_info') {
+                                return {
+                                    UNMASKED_VENDOR_WEBGL: 37445,
+                                    UNMASKED_RENDERER_WEBGL: 37446,
+                                    get unmaskedVendor() { return '${gpu.webgl.vendor}' },
+                                    get unmaskedRenderer() { return '${gpu.webgl.renderer}' }
+                                };
+                            }
+                            return originalGetExtension.call(this, name);
+                        };
+
+                        // 设置 getParameter 的返回值
+                        const originalGetParameter = WebGLRenderingContext.prototype.getParameter;
+                        WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                            if (parameter === 37445) return '${gpu.vendor}';
+                            if (parameter === 37446) return '${gpu.renderer}';
+                            if (parameter === 7936) return '${gpu.webgl.vendor}';
+                            if (parameter === 7937) return '${gpu.webgl.renderer}';
+                            if (parameter === 7938) return '${gpu.webgl.version}';
+                            if (parameter === 35724) return '${gpu.webgl.shadingLanguageVersion}';
+                            return originalGetParameter.call(this, parameter);
+                        };
+                    })();
+                `,
+                returnByValue: true
+            }).catch(() => {});
+
+            // 5. 设置 WebGL 上下文属性
+            await client.send('Runtime.evaluate', {
+                expression: `
+                    (() => {
+                        const contextAttributes = {
+                            alpha: true,
+                            antialias: true,
+                            depth: true,
+                            desynchronized: false,
+                            failIfMajorPerformanceCaveat: false,
+                            powerPreference: 'high-performance',
+                            premultipliedAlpha: true,
+                            preserveDrawingBuffer: false,
+                            stencil: true,
+                            xrCompatible: false
+                        };
+
+                        // 设置默认的 WebGL 上下文属性
+                        if (HTMLCanvasElement.prototype.getContext) {
+                            const originalGetContext = HTMLCanvasElement.prototype.getContext;
+                            HTMLCanvasElement.prototype.getContext = function(contextType, attrs) {
+                                if (contextType === 'webgl' || contextType === 'experimental-webgl' || contextType === 'webgl2') {
+                                    attrs = Object.assign({}, contextAttributes, attrs || {});
+                                }
+                                return originalGetContext.call(this, contextType, attrs);
+                            };
+                        }
+                    })();
+                `,
+                returnByValue: true
+            }).catch(() => {});
+
+        } catch (error) {
+            logger.error('设置 WebGL 和 GPU 配置时出错:', error);
+            // 继续执行，不中断流程
+        }
+    }
+
+    /**
      * 设置性能指标
      * @private
      */
     async #cdpSetPerformanceMetrics(client, fingerprint) {
         try {
-            // 设置CPU核心数
-            await client.send('Emulation.setDefaultBackgroundColorOverride', {
-                color: { r: 0, g: 0, b: 0, a: 0 }
-            }).catch(() => {});
 
             // 设置CPU性能配置
             await client.send('Emulation.setCPUThrottlingRate', { 
-                rate: 1 
-            }).catch(() => {});
-
-            // 设置CPU核心数和线程数
-            await client.send('Emulation.setHardwareConcurrencyOverride', {
-                hardwareConcurrency: fingerprint.device.cpu.threads
+                rate: 1
             }).catch(() => {});
 
             // 设置CPU性能特征
@@ -649,32 +629,6 @@ class FingerprintSimulator {
             // 设置CPU配置文件
             await client.send('Emulation.setPerformanceProfile', {
                 profile: this.#getCPUProfile(fingerprint.device.cpu)
-            }).catch(() => {});
-
-            // 注入CPU信息
-            await client.send('Runtime.evaluate', {
-                expression: `
-                    (() => {
-                        // 模拟 navigator.hardwareConcurrency
-                        Object.defineProperty(navigator, 'hardwareConcurrency', {
-                            value: ${fingerprint.device.cpu.threads},
-                            writable: false,
-                            configurable: true
-                        });
-
-                        // 模拟 CPU 性能特征
-                        if (window.performance) {
-                            const originalNow = performance.now;
-                            performance.now = function() {
-                                const baseTime = originalNow.call(performance);
-                                // 根据CPU速度添加微小的变化
-                                const cpuVariation = (Math.random() * 0.1) * (${fingerprint.device.cpu.speed} / 4000);
-                                return baseTime + cpuVariation;
-                            };
-                        }
-                    })();
-                `,
-                returnByValue: true
             }).catch(() => {});
 
         } catch (error) {
@@ -823,79 +777,105 @@ class FingerprintSimulator {
         const storage = fingerprint.device.storage;
         
         try {
-            // 1. 启用存储域和性能域
-            await client.send('Storage.enable');
+            // 1. 启用性能域
             await client.send('Performance.enable');
 
-            // 2. 设置存储模拟
-            await client.send('Emulation.setHardwareConcurrencyOverride', {
-                hardwareConcurrency: fingerprint.browser.hardwareConcurrency
-            }).catch(() => {});
-
-            // 3. 设置存储性能特征
+            // 2. 设置存储性能特征
             await client.send('Emulation.setPerformanceConfigurationOverride', {
                 timeoutScale: this.#calculateTimeoutScale(storage),
-                maxCPUSpeedRate: this.#calculateCPUSpeed(storage),
+                maxCPUSpeedRate: this.#calculateCPUSpeed(fingerprint.device.cpu),
                 hardwareProperties: {
                     'storage.type': storage.type,
                     'storage.quota': storage.quota,
                     'storage.speed': this.#calculateThroughput(storage),
-                    'storage.latency': storage.ioTiming.readLatencyMs
+                    'storage.latency': storage.ioTiming.readLatencyMs,
+                    'storage.usage': storage.usage,
+                    'storage.available': storage.estimatedAvailableSpace,
+                    'storage.persistent': storage.persistent,
+                    'storage.temporary': storage.temporary
                 }
             }).catch(() => {});
 
-            // 4. 设置配额和使用情况追踪
-            await client.send('Storage.setQuotaOverride', {
-                quotaSize: storage.quota
-            }).catch(() => {});
-
-            // 5. 设置存储估算
-            await client.send('Storage.overrideEstimate', {
-                quota: storage.quota,
-                usage: storage.usage
-            }).catch(() => {});
-
-            // 6. 设置存储压力模拟
-            await client.send('Storage.setPressureNotificationOverride', {
-                pressure: storage.type === 'hdd' ? 'moderate' : 'none'
-            }).catch(() => {});
-
-            // 7. 设置文件系统API配额
-            await client.send('Storage.overrideFileSystemQuota', {
-                origin: '*',
-                quota: storage.storageQuota,
-                persistent: storage.persistent,
-                temporary: storage.temporary
-            }).catch(() => {});
-
-            // 6. 设置 I/O 延迟模拟
-            await client.send('Network.emulateNetworkConditions', {
-                offline: false,
-                latency: storage.ioTiming.seekLatencyMs,
-                downloadThroughput: this.#calculateThroughput(storage),
-                uploadThroughput: this.#calculateThroughput(storage) * 0.8  // 上传速度通常略低于下载速度
-            }).catch(() => {});
-
-            // 9. 设置存储性能配置文件
+            // 4. 设置性能配置文件
             await client.send('Emulation.setPerformanceProfile', {
                 profile: this.#getStorageProfile(storage)
             }).catch(() => {});
 
-            // 10. 设置虚拟时间环境（影响存储操作的时间戳）
-            await client.send('Emulation.setVirtualTimePolicy', {
-                policy: 'advance',
-                budget: storage.ioTiming.readLatencyMs
+            // 5. 注入存储API模拟
+            await client.send('Runtime.evaluate', {
+                expression: `
+                    (() => {
+                        if (navigator.storage) {
+                            // 模拟 navigator.storage API
+                            Object.defineProperty(navigator.storage, 'estimate', {
+                                value: async () => ({
+                                    quota: ${storage.quota},
+                                    usage: ${storage.usage},
+                                    usageDetails: {
+                                        persistent: ${storage.persistent},
+                                        temporary: ${storage.temporary}
+                                    }
+                                }),
+                                configurable: true
+                            });
+
+                            // 模拟存储持久化
+                            Object.defineProperty(navigator.storage, 'persist', {
+                                value: async () => ${storage.persistent},
+                                configurable: true
+                            });
+
+                            Object.defineProperty(navigator.storage, 'persisted', {
+                                value: async () => ${storage.persistent},
+                                configurable: true
+                            });
+                        }
+
+                        // 模拟存储性能特征
+                        if (window.performance) {
+                            const originalNow = performance.now;
+                            performance.now = function() {
+                                const baseTime = originalNow.call(performance);
+                                const storageLatency = ${storage.ioTiming.readLatencyMs} + 
+                                                     ${storage.ioTiming.writeLatencyMs};
+                                return baseTime + (Math.random() * storageLatency);
+                            };
+                        }
+
+                        // 模拟 File System API 配额
+                        if (window.webkitRequestFileSystem) {
+                            const originalRequestFS = window.webkitRequestFileSystem;
+                            window.webkitRequestFileSystem = function(type, size, ...args) {
+                                const delay = ${storage.ioTiming.seekLatencyMs} + 
+                                            ${storage.ioTiming.readLatencyMs};
+                                setTimeout(() => {
+                                    if (size > ${storage.quota}) {
+                                        args[1](new Error('Quota exceeded'));
+                                        return;
+                                    }
+                                    originalRequestFS.call(this, type, size, ...args);
+                                }, delay);
+                            };
+                        }
+                    })();
+                `,
+                returnByValue: true
             }).catch(() => {});
 
-            // 9. 设置服务工作线程存储
-            await client.send('Storage.setServiceWorkerOverride', {
-                size: Math.floor(storage.quota * 0.05)  // Service Worker通常使用5%的配额
-            }).catch(() => {});
-
-            // 10. 设置清理策略
-            await client.send('Storage.setClearDataOverride', {
-                quotaOverride: storage.quota,
-                usageOverride: storage.usage
+            // 6. 设置设备内存和性能指标
+            await client.send('Emulation.setDeviceMetricsOverride', {
+                width: 0,
+                height: 0,
+                deviceScaleFactor: 0,
+                mobile: false,
+                storage: {
+                    type: storage.type,
+                    quota: storage.quota,
+                    usage: storage.usage,
+                    available: storage.estimatedAvailableSpace,
+                    persistent: storage.persistent,
+                    temporary: storage.temporary
+                }
             }).catch(() => {});
 
             logger.info('存储指标设置完成');
@@ -957,6 +937,68 @@ class FingerprintSimulator {
             default:
                 return 250 * MB;   // 默认值
         }
+    }
+
+    /**
+     * 获取GPU供应商ID
+     * @private
+     */
+    #getGPUVendorId(vendor) {
+        const vendorIds = {
+            'NVIDIA': '0x10DE',
+            'AMD': '0x1002',
+            'Intel': '0x8086',
+            'Apple': '0x106B'
+        };
+        
+        for (const [key, id] of Object.entries(vendorIds)) {
+            if (vendor.includes(key)) {
+                return id;
+            }
+        }
+        return '0x0000';
+    }
+
+    /**
+     * 获取GPU设备ID
+     * @private
+     */
+    #getGPUDeviceId(renderer) {
+        // 为不同的GPU型号分配特定的设备ID
+        const deviceIds = {
+            'RTX 4090': '0x2684',
+            'RTX 3080': '0x2206',
+            'RX 7900': '0x744C',
+            'RX 6800': '0x73BF',
+            'Iris Xe': '0x9A49',
+            'M2 Max': '0x0010',
+            'M1 Pro': '0x0008'
+        };
+
+        for (const [key, id] of Object.entries(deviceIds)) {
+            if (renderer.includes(key)) {
+                return id;
+            }
+        }
+        return '0x0000';
+    }
+
+    /**
+     * 获取GPU驱动版本
+     * @private
+     */
+    #getGPUDriverVersion(renderer) {
+        // 为不同的GPU生成合适的驱动版本
+        if (renderer.includes('NVIDIA')) {
+            return '546.33';  // NVIDIA最新驱动版本
+        } else if (renderer.includes('AMD')) {
+            return '23.12.1'; // AMD最新驱动版本
+        } else if (renderer.includes('Intel')) {
+            return '31.0.101.4575'; // Intel最新驱动版本
+        } else if (renderer.includes('Apple')) {
+            return '14.2.1';  // Apple系统版本
+        }
+        return '0.0.0';
     }
 }
 

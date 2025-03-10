@@ -126,6 +126,42 @@ class BrowserInitializer {
      * @returns {Promise<Object>} 启动选项配置
      */
     async _buildLaunchOptions(fingerprint) {
+        // 获取 GPU 相关 ID
+        const getGPUVendorId = (vendor) => {
+            const vendorIds = {
+                'NVIDIA': '0x10DE',
+                'AMD': '0x1002',
+                'Intel': '0x8086',
+                'Apple': '0x106B'
+            };
+            
+            for (const [key, id] of Object.entries(vendorIds)) {
+                if (vendor.includes(key)) {
+                    return id;
+                }
+            }
+            return '0x0000';
+        };
+
+        const getGPUDeviceId = (renderer) => {
+            const deviceIds = {
+                'RTX 4090': '0x2684',
+                'RTX 3080': '0x2206',
+                'RX 7900': '0x744C',
+                'RX 6800': '0x73BF',
+                'Iris Xe': '0x9A49',
+                'M2 Max': '0x0010',
+                'M1 Pro': '0x0008'
+            };
+
+            for (const [key, id] of Object.entries(deviceIds)) {
+                if (renderer.includes(key)) {
+                    return id;
+                }
+            }
+            return '0x0000';
+        };
+
         const launchOptions = {
             headless: this.config.browser.headless ? "new" : false,
             // executablePath: getChromePath(),
@@ -143,15 +179,19 @@ class BrowserInitializer {
                 "--enable-extensions",
                 "--user-agent=" + fingerprint.browser.userAgent,
 
+                // WebGL 和 GPU 相关参数
+                `--gpu-vendor-id=${getGPUVendorId(fingerprint.device.gpu.webgl.vendor)}`,
+                `--gpu-device-id=${getGPUDeviceId(fingerprint.device.gpu.webgl.renderer)}`,
+
                 // 存储相关配置
                 `--default-storage-quota=${fingerprint.device.storage.quota}`,
-                `--per-origin-storage-quota=${Math.floor(fingerprint.device.storage.quota * 0.5)}`, // 每个源50%的总配额
+                `--per-origin-storage-quota=${Math.floor(fingerprint.device.storage.quota * 0.5)}`,
                 `--filesystem-quota-mb=${Math.floor(fingerprint.device.storage.quota / (1024 * 1024))}`,
-                `--disk-cache-size=${Math.floor(fingerprint.device.storage.quota * 0.1)}`, // 缓存使用10%的配额
+                `--disk-cache-size=${Math.floor(fingerprint.device.storage.quota * 0.1)}`,
 
                 // 根据存储类型设置不同的特性
                 ...(fingerprint.device.storage.type === 'hdd' ? [
-                    '--enable-storage-pressure',  // HDD更容易出现存储压力
+                    '--enable-storage-pressure',
                     '--force-storage-pressure'
                 ] : []),
 
@@ -160,13 +200,6 @@ class BrowserInitializer {
                 '--enable-indexed-db',
                 '--enable-features=StorageQuotaUI',
 
-                // 设置硬件并发数
-                `--js-flags=--num-raster-threads=${fingerprint.browser.hardwareConcurrency}`,
-                // 设置内存限制
-                `--js-flags=--max-old-space-size=${fingerprint.browser.deviceMemory * 1024}`,
-                // 设置GPU信息
-                `--gpu-vendor-id=${fingerprint.device.gpu.vendor}`,
-                `--gpu-device-id=${fingerprint.device.gpu.renderer}`,
                 // 设置屏幕分辨率和缩放比例
                 `--window-size=${fingerprint.device.screen.width},${fingerprint.device.screen.height}`,
                 `--force-device-scale-factor=${fingerprint.device.screen.devicePixelRatio}`,
@@ -183,11 +216,11 @@ class BrowserInitializer {
 
                 // 根据存储类型设置内存压力参数
                 ...(fingerprint.device.storage.type === 'hdd' ? [
-                    '--memory-pressure-thresholds=100,200,300'  // HDD系统通常内存压力更大
+                    '--memory-pressure-thresholds=100,200,300'
                 ] : fingerprint.device.storage.type === 'ssd' ? [
-                    '--memory-pressure-thresholds=150,250,350'  // SSD系统内存压力中等
+                    '--memory-pressure-thresholds=150,250,350'
                 ] : [
-                    '--memory-pressure-thresholds=200,300,400'  // NVMe系统内存压力较小
+                    '--memory-pressure-thresholds=200,300,400'
                 ])
             ].filter(Boolean), // 移除空值
 
@@ -326,7 +359,6 @@ class BrowserInitializer {
                     'WebDriver': testResults.find(r => r.name.includes('WebDriver'))?.passed,
                     'Chrome': testResults.find(r => r.name.includes('Chrome'))?.passed,
                     'UserAgent': testResults.find(r => r.name.includes('User Agent'))?.passed,
-                    'WebGL': testResults.find(r => r.name.includes('WebGL Vendor'))?.passed
                 };
 
                 return {

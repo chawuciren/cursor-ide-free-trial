@@ -196,32 +196,52 @@ class FingerprintGenerator {
 
     // WebGL参数配置
     #webglParameters = {
-        'MAX_TEXTURE_SIZE': [4096, 8192, 16384, 32768],
-        'MAX_VIEWPORT_DIMS': [[4096, 4096], [8192, 8192], [16384, 16384], [32768, 32768]],
-        'MAX_VERTEX_ATTRIBS': [16, 32],
-        'MAX_VERTEX_UNIFORM_VECTORS': [4096, 8192],
-        'MAX_VARYING_VECTORS': [30, 32],
-        'MAX_COMBINED_TEXTURE_IMAGE_UNITS': [32, 48, 64],
-        'MAX_VERTEX_TEXTURE_IMAGE_UNITS': [16, 32],
-        'MAX_TEXTURE_IMAGE_UNITS': [16, 32],
-        'MAX_FRAGMENT_UNIFORM_VECTORS': [1024, 2048],
-        'MAX_CUBE_MAP_TEXTURE_SIZE': [4096, 8192, 16384, 32768],
-        'MAX_RENDERBUFFER_SIZE': [4096, 8192, 16384, 32768],
-        'MAX_TEXTURE_MAX_ANISOTROPY_EXT': [8, 16],
-        'RED_BITS': [8],
-        'GREEN_BITS': [8],
-        'BLUE_BITS': [8],
-        'ALPHA_BITS': [8],
-        'DEPTH_BITS': [24],
-        'STENCIL_BITS': [8],
-        'MAX_VERTEX_UNIFORM_COMPONENTS': [16384],
-        'MAX_FRAGMENT_UNIFORM_COMPONENTS': [16384],
-        'MAX_DRAW_BUFFERS_WEBGL': [8],
-        'MAX_COLOR_ATTACHMENTS_WEBGL': [8],
-        'MAX_ARRAY_TEXTURE_LAYERS': [2048],
-        'MAX_3D_TEXTURE_SIZE': [2048],
-        'MAX_ELEMENTS_VERTICES': [1048576],
-        'MAX_ELEMENTS_INDICES': [1048576]
+        37445: null, // UNMASKED_VENDOR_WEBGL
+        37446: null, // UNMASKED_RENDERER_WEBGL
+        7936: null,  // VERSION
+        7937: null,  // VENDOR
+        7938: null,  // RENDERER
+        35724: null, // SHADING_LANGUAGE_VERSION
+        MAX_COMBINED_TEXTURE_IMAGE_UNITS: [32, 48, 64],
+        MAX_CUBE_MAP_TEXTURE_SIZE: [4096, 8192, 16384, 32768],
+        MAX_FRAGMENT_UNIFORM_VECTORS: [512, 1024, 2048],
+        MAX_RENDERBUFFER_SIZE: [4096, 8192, 16384, 32768],
+        MAX_TEXTURE_IMAGE_UNITS: [16, 24, 32],
+        MAX_TEXTURE_SIZE: [4096, 8192, 16384, 32768],
+        MAX_VARYING_VECTORS: [30, 32],
+        MAX_VERTEX_ATTRIBS: [16, 32],
+        MAX_VERTEX_TEXTURE_IMAGE_UNITS: [16, 24, 32],
+        MAX_VERTEX_UNIFORM_VECTORS: [2048, 4096, 8192],
+        MAX_VIEWPORT_DIMS: [[4096, 4096], [8192, 8192], [16384, 16384], [32768, 32768]],
+        ALIASED_LINE_WIDTH_RANGE: [[1, 1]],
+        ALIASED_POINT_SIZE_RANGE: [[1, 512], [1, 1024], [1, 2048]],
+        RED_BITS: [8],
+        GREEN_BITS: [8],
+        BLUE_BITS: [8],
+        ALPHA_BITS: [8],
+        DEPTH_BITS: [24],
+        STENCIL_BITS: [8],
+        MAX_3D_TEXTURE_SIZE: [2048, 4096, 8192],
+        MAX_ELEMENTS_VERTICES: [1048576],
+        MAX_ELEMENTS_INDICES: [1048576],
+        MAX_TEXTURE_MAX_ANISOTROPY_EXT: [8, 16],
+        MAX_DRAW_BUFFERS_WEBGL: [8, 16],
+        MAX_COLOR_ATTACHMENTS_WEBGL: [8, 16],
+        MAX_ARRAY_TEXTURE_LAYERS: [2048, 4096]
+    };
+
+    // WebGL上下文属性配置
+    #webglContextAttributes = {
+        alpha: [true],
+        antialias: [true, false],
+        depth: [true],
+        desynchronized: [false],
+        failIfMajorPerformanceCaveat: [false],
+        powerPreference: ['high-performance', 'default', 'low-power'],
+        premultipliedAlpha: [true],
+        preserveDrawingBuffer: [false],
+        stencil: [true],
+        xrCompatible: [false]
     };
 
     // 硬件配置信息
@@ -569,7 +589,20 @@ class FingerprintGenerator {
             // 随机选择WebGL参数
             const webglParams = {};
             for (const [param, values] of Object.entries(this.#webglParameters)) {
-                webglParams[param] = this.#getRandomItem(values);
+                // 处理特殊参数
+                if (param === '37445') webglParams[param] = gpu.vendor;
+                else if (param === '37446') webglParams[param] = gpu.renderer;
+                else if (param === '7936') webglParams[param] = gpu.webglVersion;
+                else if (param === '7937') webglParams[param] = gpu.webglVendor;
+                else if (param === '7938') webglParams[param] = gpu.webglRenderer;
+                else if (param === '35724') webglParams[param] = gpu.webglShadingLanguageVersion;
+                else webglParams[param] = this.#getRandomItem(values);
+            }
+
+            // 随机选择WebGL上下文属性
+            const contextAttributes = {};
+            for (const [attr, values] of Object.entries(this.#webglContextAttributes)) {
+                contextAttributes[attr] = this.#getRandomItem(values);
             }
             
             // 随机选择WebGL扩展子集
@@ -585,6 +618,38 @@ class FingerprintGenerator {
 
             // 构建 accept-language
             const acceptLanguage = languages.join(',') + ';q=0.9';
+
+            // 确定设备类型和型号
+            const deviceTypes = {
+                desktop: {
+                    models: ['Windows PC', 'iMac', 'Mac Pro', 'Linux Desktop'],
+                    mobile: false
+                },
+                laptop: {
+                    models: ['MacBook Pro', 'MacBook Air', 'ThinkPad X1', 'Dell XPS', 'HP Spectre'],
+                    mobile: false
+                },
+                tablet: {
+                    models: ['iPad Pro', 'Surface Pro', 'Galaxy Tab S8'],
+                    mobile: true
+                },
+                phone: {
+                    models: ['iPhone', 'Pixel', 'Galaxy S23'],
+                    mobile: true
+                }
+            };
+
+            // 根据CPU架构和性能选择设备类型
+            let deviceType;
+            if (cpu.arch.includes('arm')) {
+                deviceType = cpu.cores >= 8 ? 'tablet' : 'phone';
+            } else {
+                deviceType = cpu.cores >= 8 ? 'desktop' : 'laptop';
+            }
+
+            const device = deviceTypes[deviceType];
+            const model = this.#getRandomItem(device.models);
+            const isMobile = device.mobile;
 
             // 定义 userAgent
             const userAgent = `Mozilla/5.0 (Windows NT 10.0; ${cpu.wow64 ? 'WOW64' : 'Win64'}; ${cpu.arch}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
@@ -660,14 +725,16 @@ class FingerprintGenerator {
                     connectionRtt: 50,
                     deviceMemory,
                     hardwareConcurrency,
-                    maxTouchPoints: 0,
+                    maxTouchPoints: isMobile ? 5 : 0,
                     pdfViewerEnabled: true,
                     vendor: 'Google Inc.',
                     vendorSub: '',
                     productSub: '20030107',
                     cookieEnabled: true,
                     doNotTrack: null,
-                    webdriver: false
+                    webdriver: false,
+                    mobile: isMobile,
+                    model: model
                 },
 
                 // 设备信息
@@ -698,18 +765,7 @@ class FingerprintGenerator {
                             shadingLanguageVersion: gpu.webglShadingLanguageVersion,
                             extensions: webglExtensions,
                             parameters: webglParams,
-                            contextAttributes: {
-                                alpha: true,
-                                antialias: true,
-                                depth: true,
-                                desynchronized: false,
-                                failIfMajorPerformanceCaveat: false,
-                                powerPreference: 'high-performance',
-                                premultipliedAlpha: true,
-                                preserveDrawingBuffer: false,
-                                stencil: true,
-                                xrCompatible: false
-                            }
+                            contextAttributes: contextAttributes
                         }
                     },
                     mediaDevices: mediaDevices,
