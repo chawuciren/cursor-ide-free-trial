@@ -34,14 +34,14 @@ class FingerprintSimulator {
         try {
             // 启用所有之前注释的配置
             await this.#cdpHideAutomationMark(client, fingerprint);
-            await this.#cdpSetUserAgent(client, fingerprint);
-            await this.#cdpSetLocale(client, fingerprint);
-            await this.#cdpSetTimezone(client, fingerprint);
-            await this.#cdpSetDeviceMetrics(client, fingerprint);
-            await this.#cdpSetWebGLAndGPU(client, fingerprint);
-            await this.#cdpSetPerformanceMetrics(client, fingerprint);
-            await this.#cdpSetMemoryMetrics(client, fingerprint);
-            await this.#cdpSetStorageMetrics(client, fingerprint);
+            // await this.#cdpSetUserAgent(client, fingerprint);
+            // await this.#cdpSetLocale(client, fingerprint);
+            // await this.#cdpSetTimezone(client, fingerprint);
+            // await this.#cdpSetDeviceMetrics(client, fingerprint);
+            // await this.#cdpSetWebGLAndGPU(client, fingerprint);
+            // await this.#cdpSetPerformanceMetrics(client, fingerprint);
+            // await this.#cdpSetMemoryMetrics(client, fingerprint);
+            // await this.#cdpSetStorageMetrics(client, fingerprint);
 
         } catch (error) {
             logger.error('CDP覆盖设置失败:', error.message);
@@ -56,8 +56,8 @@ class FingerprintSimulator {
     async #applyEvaluateOverrides(page, fingerprint) {
         try {
             await this.#evaluateCleanWebDriverBypass(page);
-            await this.#evaluateInjectWebGLProtection(page, fingerprint);
-            await this.#evaluateInjectWebAudioProtection(page, fingerprint);
+            // await this.#evaluateInjectWebGLProtection(page, fingerprint);
+            // await this.#evaluateInjectWebAudioProtection(page, fingerprint);
         } catch (error) {
             logger.error('evaluate设置指纹保护失败:', error.message);
             logger.debug('evaluate错误详情:', error);
