@@ -176,11 +176,66 @@ class FingerprintGenerator {
 
     // 硬件配置信息
     #hardwareConcurrency = [4, 6, 8, 10, 12, 16, 24, 32, 48, 64];
-    #deviceMemory = [4, 8, 16, 32];
+    #deviceMemory = [0.25, 0.5, 1, 2, 4, 8];  // Chrome允许的标准值
     #memoryInfo = [
+        // 4GB配置
+        { jsHeapSizeLimit: 2172649472, totalJSHeapSize: 1172649472, usedJSHeapSize: 950266368 },
+        // 8GB配置
         { jsHeapSizeLimit: 4294705152, totalJSHeapSize: 2172649472, usedJSHeapSize: 1750266368 },
-        { jsHeapSizeLimit: 8589410304, totalJSHeapSize: 4345298944, usedJSHeapSize: 3500532736 },
-        { jsHeapSizeLimit: 17178820608, totalJSHeapSize: 8690597888, usedJSHeapSize: 7001065472 }
+        // 16GB配置
+        { jsHeapSizeLimit: 8589410304, totalJSHeapSize: 4345298944, usedJSHeapSize: 3500532736 }
+    ];
+
+    // 存储配置信息
+    #storageInfo = [
+        // HDD配置
+        {
+            type: 'hdd',
+            quota: 1024 * 1024 * 1024 * 500, // 500GB
+            usage: 1024 * 1024 * 1024 * 350,  // 350GB
+            persistent: true,
+            temporary: false,
+            syncable: true,
+            estimatedAvailableSpace: 1024 * 1024 * 1024 * 150, // 150GB
+            storageQuota: 1024 * 1024 * 1024 * 1024, // 1TB
+            ioTiming: {
+                readLatencyMs: 8,      // HDD典型读取延迟
+                writeLatencyMs: 10,    // HDD典型写入延迟
+                seekLatencyMs: 15      // HDD典型寻道延迟
+            }
+        },
+        // SSD配置
+        {
+            type: 'ssd',
+            quota: 1024 * 1024 * 1024 * 1000, // 1TB
+            usage: 1024 * 1024 * 1024 * 600,  // 600GB
+            persistent: true,
+            temporary: false,
+            syncable: true,
+            estimatedAvailableSpace: 1024 * 1024 * 1024 * 400, // 400GB
+            storageQuota: 1024 * 1024 * 1024 * 2048, // 2TB
+            ioTiming: {
+                readLatencyMs: 0.1,    // SSD典型读取延迟
+                writeLatencyMs: 0.2,   // SSD典型写入延迟
+                seekLatencyMs: 0.1     // SSD无寻道延迟
+            }
+        },
+        // NVMe配置
+        {
+            type: 'nvme',
+            quota: 1024 * 1024 * 1024 * 2000, // 2TB
+            usage: 1024 * 1024 * 1024 * 1200, // 1.2TB
+            persistent: true,
+            temporary: false,
+            syncable: true,
+            estimatedAvailableSpace: 1024 * 1024 * 1024 * 800, // 800GB
+            storageQuota: 1024 * 1024 * 1024 * 4096, // 4TB
+            ioTiming: {
+                readLatencyMs: 0.02,   // NVMe典型读取延迟
+                writeLatencyMs: 0.04,  // NVMe典型写入延迟
+                seekLatencyMs: 0.01    // NVMe无寻道延迟
+            }
+        }
     ];
 
     // 语言配置
@@ -230,46 +285,6 @@ class FingerprintGenerator {
         'Europe/Moscow'
     ];
 
-    // 插件配置
-    #plugins = [
-        {
-            name: 'Chrome PDF Plugin',
-            filename: 'internal-pdf-viewer',
-            description: 'Portable Document Format',
-            mimeTypes: [{
-                type: 'application/x-google-chrome-pdf',
-                suffixes: 'pdf',
-                description: 'Portable Document Format'
-            }]
-        },
-        {
-            name: 'Chrome PDF Viewer',
-            filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
-            description: '',
-            mimeTypes: [{
-                type: 'application/pdf',
-                suffixes: 'pdf',
-                description: ''
-            }]
-        },
-        {
-            name: 'Native Client',
-            filename: 'internal-nacl-plugin',
-            description: '',
-            mimeTypes: [
-                {
-                    type: 'application/x-nacl',
-                    suffixes: '',
-                    description: 'Native Client Executable'
-                },
-                {
-                    type: 'application/x-pnacl',
-                    suffixes: '',
-                    description: 'Portable Native Client Executable'
-                }
-            ]
-        }
-    ];
 
     // 媒体设备配置
     #mediaDevices = {
@@ -455,6 +470,9 @@ class FingerprintGenerator {
                 channelCountMode: this.#getRandomItem(this.#audioContextParams.channelCountMode),
                 channelInterpretation: this.#getRandomItem(this.#audioContextParams.channelInterpretation)
             };
+            
+            // 随机选择存储配置
+            const storage = this.#getRandomItem(this.#storageInfo);
 
             const fingerprint = {
                 // 浏览器信息
@@ -533,16 +551,22 @@ class FingerprintGenerator {
                         }
                     },
                     mediaDevices: this.#mediaDevices,
-                    plugins: this.#plugins,
-                    mimeTypes: this.#plugins.reduce((acc, plugin) => {
-                        plugin.mimeTypes.forEach(mt => acc.push(mt));
-                        return acc;
-                    }, []),
                     fonts: this.#fontList,
                     voices: this.#voices,
                     canvas: this.#canvasParams,
                     audio: audioContext,
-                    memory: memoryInfo
+                    memory: memoryInfo,
+                    storage: {
+                        type: storage.type,
+                        quota: storage.quota,
+                        usage: storage.usage,
+                        persistent: storage.persistent,
+                        temporary: storage.temporary,
+                        syncable: storage.syncable,
+                        estimatedAvailableSpace: storage.estimatedAvailableSpace,
+                        storageQuota: storage.storageQuota,
+                        ioTiming: storage.ioTiming
+                    }
                 },
 
                 // 网络信息

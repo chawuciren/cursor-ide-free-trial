@@ -1,1 +1,0 @@
-import{m as e}from"./runtime-f832cb0b.js";import{C as r}from"./enum-bd484685.js";const s="__MyFingerprint__",n=o=>o[s];window.addEventListener("message",o=>{if(o.origin!=location.origin)return;const t=n(o.data);switch(t?.type){case r.SetHookRecords:{e(t.data);break}}});

@@ -126,13 +126,6 @@ class BrowserInitializer {
      * @returns {Promise<Object>} 启动选项配置
      */
     async _buildLaunchOptions(fingerprint) {
-        const extensionPath = path.join(
-            getExtensionsDir(),
-            EXTENSIONS.FINGERPRINT_DEFENDER.id,
-            EXTENSIONS.FINGERPRINT_DEFENDER.version
-        );
-        logger.info('加载插件');
-
         const launchOptions = {
             headless: this.config.browser.headless ? "new" : false,
             // executablePath: getChromePath(),
@@ -147,9 +140,65 @@ class BrowserInitializer {
                 "--window-position=0,0",
                 "--ignore-certificate-errors",
                 "--ignore-certificate-errors-spki-list",
+                "--enable-extensions",
                 "--user-agent=" + fingerprint.browser.userAgent,
-            ],
-            defaultViewport: null,
+
+                // 存储相关配置
+                `--default-storage-quota=${fingerprint.device.storage.quota}`,
+                `--per-origin-storage-quota=${Math.floor(fingerprint.device.storage.quota * 0.5)}`, // 每个源50%的总配额
+                `--filesystem-quota-mb=${Math.floor(fingerprint.device.storage.quota / (1024 * 1024))}`,
+                `--disk-cache-size=${Math.floor(fingerprint.device.storage.quota * 0.1)}`, // 缓存使用10%的配额
+
+                // 根据存储类型设置不同的特性
+                ...(fingerprint.device.storage.type === 'hdd' ? [
+                    '--enable-storage-pressure',  // HDD更容易出现存储压力
+                    '--force-storage-pressure'
+                ] : []),
+
+                // 启用所有存储API
+                '--enable-local-storage',
+                '--enable-indexed-db',
+                '--enable-features=StorageQuotaUI',
+
+                // 设置硬件并发数
+                `--js-flags=--num-raster-threads=${fingerprint.browser.hardwareConcurrency}`,
+                // 设置内存限制
+                `--js-flags=--max-old-space-size=${fingerprint.browser.deviceMemory * 1024}`,
+                // 设置GPU信息
+                `--gpu-vendor-id=${fingerprint.device.gpu.vendor}`,
+                `--gpu-device-id=${fingerprint.device.gpu.renderer}`,
+                // 设置屏幕分辨率和缩放比例
+                `--window-size=${fingerprint.device.screen.width},${fingerprint.device.screen.height}`,
+                `--force-device-scale-factor=${fingerprint.device.screen.devicePixelRatio}`,
+                // 设置颜色配置
+                `--color-profile=${fingerprint.device.screen.colorDepth}`,
+                // 设置平台特定参数
+                `--platform=${fingerprint.browser.platform}`,
+                // 设置语言
+                `--lang=${fingerprint.browser.languages[0]}`,
+                // 设置触控支持
+                fingerprint.browser.maxTouchPoints > 0 ? '--touch-events' : '--disable-touch-events',
+                // 如果是移动设备，添加移动设备模拟
+                fingerprint.browser.mobile ? '--enable-mobile-emulation' : '',
+
+                // 根据存储类型设置内存压力参数
+                ...(fingerprint.device.storage.type === 'hdd' ? [
+                    '--memory-pressure-thresholds=100,200,300'  // HDD系统通常内存压力更大
+                ] : fingerprint.device.storage.type === 'ssd' ? [
+                    '--memory-pressure-thresholds=150,250,350'  // SSD系统内存压力中等
+                ] : [
+                    '--memory-pressure-thresholds=200,300,400'  // NVMe系统内存压力较小
+                ])
+            ].filter(Boolean), // 移除空值
+
+            defaultViewport: {
+                width: fingerprint.device.screen.width,
+                height: fingerprint.device.screen.height,
+                deviceScaleFactor: fingerprint.device.screen.devicePixelRatio || 1,
+                isMobile: fingerprint.browser.mobile,
+                hasTouch: fingerprint.browser.maxTouchPoints > 0,
+                isLandscape: fingerprint.device.screen.width > fingerprint.device.screen.height
+            },
             ignoreDefaultArgs: [
                 "--enable-automation",
                 "--enable-blink-features=AutomationControlled",
@@ -428,99 +477,6 @@ class BrowserInitializer {
         } catch (error) {
             logger.warn('CreepJS指纹检查失败:', error.message);
             return { success: false, reason: `CreepJS测试失败: ${error.message}` };
-        }
-    }
-
-    /**
-     * 配置浏览器插件
-     * @param {Browser} browser Puppeteer浏览器实例
-     */
-    async configureExtensions(browser) {
-        try {
-            logger.info('开始配置插件...');
-            const extensionPage = await browser.newPage();
-            
-            try {
-                const extensionUrl = `chrome-extension://${EXTENSIONS.FINGERPRINT_DEFENDER.id}/index.html`;
-                await extensionPage.goto(extensionUrl, { waitUntil: 'networkidle0', timeout: 30000 });
-
-                const extensionStorageConfig = {
-                    'browser-__index__': ["aeb006a8-3325-c7a4-5c5d-e6faa32e1244"],
-                    'browser-aeb006a8-3325-c7a4-5c5d-e6faa32e1244': {
-                        "customProtos": [
-                            {"name":"Screen","properties":[
-                                {"key":"colorDepth","type":"number","value":24},
-                                {"key":"pixelDepth","type":"number","value":24}
-                            ]},
-                            {"name":"Navigator","properties":[
-                                {"key":"maxTouchPoints","type":"number","value":0}
-                            ]}
-                        ],
-                        "customVars":[],
-                        "factors": {
-                            "audio":4.751,"canvas":3.406,"clientRect":3.744,
-                            "fonts":0.644,"plugins":3.048,"voice":4.341,
-                            "webgl":2.13,"webgpu":2.046
-                        },
-                        "gpu": {
-                            "renderer":"ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)",
-                            "vendor":"Google Inc. (Apple)"
-                        },
-                        "id":"aeb006a8-3325-c7a4-5c5d-e6faa32e1244",
-                        "language":"dynamic",
-                        "location":{"lat":"dynamic","lng":"dynamic"},
-                        "memoryCapacity":8,
-                        "name":"Random Browser:0",
-                        "processors":1,
-                        "screen":{"height":1068,"noise":8,"width":1722},
-                        "timezone":"dynamic",
-                        "uaInfo": {
-                            "cpu":{"architecture":"amd64"},
-                            "device":{},
-                            "engine":{"name":"Blink","version":"133.0.0.0"},
-                            "os":{"name":"Windows","version":"10"},
-                            "product":{"major":"133","name":"Chrome","version":"133.0.0.0"}
-                        },
-                        "userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 11969",
-                        "webrtc":"dynamic"
-                    },
-                    'config-__index__': ["option","device","hostEnable","fixedBrowserId"],
-                    'config-device': "desktop",
-                    'config-hostEnable': '',
-                    'config-fixedBrowserId': "aeb006a8-3325-c7a4-5c5d-e6faa32e1244",
-                    'config-option': '静态',
-                    'config-safeMode': true
-                };
-
-                // 设置扩展存储
-                for (const [key, value] of Object.entries(extensionStorageConfig)) {
-                    await extensionPage.evaluate(async ([key, value]) => {
-                        await new Promise((resolve, reject) => {
-                            try {
-                                chrome.storage.local.set({ [key]: value }, () => {
-                                    chrome.runtime.lastError ? reject(chrome.runtime.lastError) : resolve();
-                                });
-                            } catch (error) {
-                                reject(error);
-                            }
-                        });
-                    }, [key, value]);
-                }
-
-                logger.info('扩展存储设置成功');
-                await extensionPage.reload({ waitUntil: 'networkidle0' });
-
-            } catch (error) {
-                logger.warn('配置 Fingerprint Defender 时出错:', error.message);
-                logger.warn('错误堆栈:', error.stack);
-            } finally {
-                await extensionPage.close().catch(e => logger.warn('关闭配置页面时出错:', e.message));
-            }
-            
-            logger.info('插件配置完成');
-        } catch (error) {
-            logger.error('配置插件时出错:', error);
-            throw error;
         }
     }
 }

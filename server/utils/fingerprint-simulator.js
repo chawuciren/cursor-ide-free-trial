@@ -39,6 +39,8 @@ class FingerprintSimulator {
             await this.#cdpSetTimezone(client, fingerprint);
             await this.#cdpSetDeviceMetrics(client, fingerprint);
             await this.#cdpSetPerformanceMetrics(client, fingerprint);
+            await this.#cdpSetMemoryMetrics(client, fingerprint);
+            await this.#cdpSetStorageMetrics(client, fingerprint);
 
         } catch (error) {
             logger.error('CDP覆盖设置失败:', error.message);
@@ -53,11 +55,11 @@ class FingerprintSimulator {
     async #applyEvaluateOverrides(page, fingerprint) {
         try {
             await this.#evaluateCleanWebDriverBypass(page);
-            await this.#evaluateSetDeviceInfo(page, fingerprint);
-            await this.#evaluateSetPluginInfo(page);
-            await this.#evaluateInjectWebGLProtection(page);
-            await this.#evaluateInjectCanvasProtection(page);
-            await this.#evaluateInjectWebAudioProtection(page);
+            await this.#evaluateInjectWebGLProtection(page, fingerprint);
+            await this.#evaluateInjectCanvasProtection(page, fingerprint);
+            await this.#evaluateInjectWebAudioProtection(page, fingerprint);
+            // 移除 JS 注入的存储保护，改用 CDP
+            // await this.#evaluateInjectStorageProtection(page, fingerprint);
         } catch (error) {
             logger.error('evaluate设置指纹保护失败:', error.message);
             logger.debug('evaluate错误详情:', error);
@@ -116,441 +118,9 @@ class FingerprintSimulator {
     }
 
     /**
-     * 设置设备信息
-     */
-    async #evaluateSetDeviceInfo(page, fingerprint) {
-        // 注入其他设备信息
-        await page.evaluateOnNewDocument((fp) => {
-            try {
-                // 保护 performance.memory
-                if (window.performance) {
-                    // 使用指纹中的内存信息
-                    const memoryInfo = {
-                        jsHeapSizeLimit: fp.device.memory.jsHeapSizeLimit,
-                        totalJSHeapSize: fp.device.memory.totalJSHeapSize,
-                        usedJSHeapSize: fp.device.memory.usedJSHeapSize
-                    };
-
-                    // 保护 performance.memory
-                    Object.defineProperty(window.performance, 'memory', {
-                        get: () => memoryInfo,
-                        configurable: false,
-                        enumerable: true
-                    });
-
-                    // 保护内存信息不被修改
-                    Object.freeze(memoryInfo);
-                }
-
-                // 保护 chrome.system.memory API (如果存在)
-                if (window.chrome && window.chrome.system && window.chrome.system.memory) {
-                    const originalGetInfo = window.chrome.system.memory.getInfo;
-                    window.chrome.system.memory.getInfo = function(callback) {
-                        callback({
-                            availableCapacity: fp.device.memory.jsHeapSizeLimit,
-                            capacity: fp.device.memory.jsHeapSizeLimit
-                        });
-                    };
-                }
-
-                // 保护 process.getSystemMemoryInfo() (如果存在)
-                if (window.process && typeof window.process.getSystemMemoryInfo === 'function') {
-                    window.process.getSystemMemoryInfo = function() {
-                        return {
-                            total: fp.device.memory.jsHeapSizeLimit,
-                            free: fp.device.memory.jsHeapSizeLimit - fp.device.memory.usedJSHeapSize,
-                            swapTotal: 0,
-                            swapFree: 0
-                        };
-                    };
-                }
-
-                // 添加设备内存信息
-                if ('deviceMemory' in navigator) {
-                    Object.defineProperty(navigator, 'deviceMemory', {
-                        value: fp.browser.deviceMemory,
-                        configurable: true,
-                        enumerable: true
-                    });
-                }
-
-                // 添加硬件并发数
-                if ('hardwareConcurrency' in navigator) {
-                    Object.defineProperty(navigator, 'hardwareConcurrency', {
-                        value: fp.browser.hardwareConcurrency,
-                        configurable: true,
-                        enumerable: true
-                    });
-                }
-
-                // 添加最大触控点数
-                if ('maxTouchPoints' in navigator) {
-                    Object.defineProperty(navigator, 'maxTouchPoints', {
-                        value: fp.browser.maxTouchPoints,
-                        configurable: true,
-                        enumerable: true
-                    });
-                }
-
-                // 添加连接信息模拟
-                if (!navigator.connection) {
-                    Object.defineProperty(navigator, 'connection', {
-                        value: {
-                            effectiveType: fp.network.effectiveType,
-                            rtt: fp.network.rtt,
-                            downlink: fp.network.downlink,
-                            saveData: fp.network.saveData,
-                            type: fp.network.type,
-                            downlinkMax: fp.network.downlinkMax,
-                            onchange: fp.network.onchange
-                        },
-                        configurable: true,
-                        enumerable: true
-                    });
-                }
-
-                // 添加电池 API 模拟
-                if (!navigator.getBattery) {
-                    navigator.getBattery = function() {
-                        return Promise.resolve({
-                            charging: fp.battery.charging,
-                            chargingTime: fp.battery.chargingTime,
-                            dischargingTime: fp.battery.dischargingTime,
-                            level: fp.battery.level
-                        });
-                    };
-                }
-
-                // 添加平台信息
-                if ('platform' in navigator) {
-                    Object.defineProperty(navigator, 'platform', {
-                        value: fp.browser.platform,
-                        configurable: true,
-                        enumerable: true
-                    });
-                }
-
-                // 添加供应商信息
-                if ('vendor' in navigator) {
-                    Object.defineProperty(navigator, 'vendor', {
-                        value: fp.browser.vendor,
-                        configurable: true,
-                        enumerable: true
-                    });
-                }
-
-                // 添加产品子版本信息
-                if ('productSub' in navigator) {
-                    Object.defineProperty(navigator, 'productSub', {
-                        value: fp.browser.productSub,
-                        configurable: true,
-                        enumerable: true
-                    });
-                }
-
-                // 添加供应商子版本信息
-                if ('vendorSub' in navigator) {
-                    Object.defineProperty(navigator, 'vendorSub', {
-                        value: fp.browser.vendorSub,
-                        configurable: true,
-                        enumerable: true
-                    });
-                }
-
-            } catch (e) {
-                // 忽略错误，继续执行
-            }
-        }, fingerprint);
-    }
-
-    /**
-     * 设置插件信息
-     */
-    async #evaluateSetPluginInfo(page) {
-        await page.evaluateOnNewDocument(() => {
-            try {
-                // 创建MimeType代理
-                const createMimeTypeProxy = (mimeTypeData) => {
-                    const mimeTypeProto = Object.getPrototypeOf(navigator.mimeTypes[0]);
-                    
-                    return new Proxy({
-                        ...mimeTypeData,
-                        __proto__: mimeTypeProto
-                    }, {
-                        get(target, prop) {
-                            if (prop === 'enabledPlugin') {
-                                return target.plugin;
-                            }
-                            return Reflect.get(target, prop);
-                        },
-                        getOwnPropertyDescriptor(target, prop) {
-                            const descriptor = Reflect.getOwnPropertyDescriptor(target, prop);
-                            if (descriptor) {
-                                descriptor.configurable = true;
-                            }
-                            return descriptor;
-                        }
-                    });
-                };
-
-                // 创建Plugin代理
-                const createPluginProxy = (pluginData) => {
-                    const pluginProto = Object.getPrototypeOf(navigator.plugins[0]);
-                    
-                    const plugin = {
-                        ...pluginData,
-                        __proto__: pluginProto
-                    };
-
-                    // 设置MimeType数组
-                    pluginData.mimeTypes.forEach((mimeType, index) => {
-                        const mimeTypeProxy = createMimeTypeProxy({
-                            type: mimeType.type,
-                            suffixes: mimeType.suffixes,
-                            description: mimeType.description,
-                            plugin: plugin
-                        });
-
-                        Object.defineProperty(plugin, index, {
-                            value: mimeTypeProxy,
-                            writable: false,
-                            enumerable: true,
-                            configurable: true
-                        });
-
-                        Object.defineProperty(plugin, mimeType.type, {
-                            value: mimeTypeProxy,
-                            writable: false,
-                            enumerable: false,
-                            configurable: true
-                        });
-                    });
-
-                    Object.defineProperty(plugin, 'length', {
-                        value: pluginData.mimeTypes.length,
-                        writable: false,
-                        enumerable: true,
-                        configurable: true
-                    });
-
-                    return new Proxy(plugin, {
-                        get(target, prop) {
-                            if (prop === 'namedItem') {
-                                return function(name) {
-                                    return target[name];
-                                };
-                            }
-                            if (prop === 'item') {
-                                return function(index) {
-                                    return target[index];
-                                };
-                            }
-                            return Reflect.get(target, prop);
-                        },
-                        getOwnPropertyDescriptor(target, prop) {
-                            const descriptor = Reflect.getOwnPropertyDescriptor(target, prop);
-                            if (descriptor) {
-                                descriptor.configurable = true;
-                            }
-                            return descriptor;
-                        }
-                    });
-                };
-
-                // 创建PluginArray代理
-                const createPluginArrayProxy = () => {
-                    const pluginArrayProto = Object.getPrototypeOf(navigator.plugins);
-                    const plugins = [
-                        {
-                            name: 'Chrome PDF Plugin',
-                            filename: 'internal-pdf-viewer',
-                            description: 'Portable Document Format',
-                            mimeTypes: [{
-                                type: 'application/x-google-chrome-pdf',
-                                suffixes: 'pdf',
-                                description: 'Portable Document Format'
-                            }]
-                        },
-                        {
-                            name: 'Chrome PDF Viewer',
-                            filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
-                            description: '',
-                            mimeTypes: [{
-                                type: 'application/pdf',
-                                suffixes: 'pdf',
-                                description: ''
-                            }]
-                        },
-                        {
-                            name: 'Native Client',
-                            filename: 'internal-nacl-plugin',
-                            description: '',
-                            mimeTypes: [
-                                {
-                                    type: 'application/x-nacl',
-                                    suffixes: '',
-                                    description: 'Native Client Executable'
-                                },
-                                {
-                                    type: 'application/x-pnacl',
-                                    suffixes: '',
-                                    description: 'Portable Native Client Executable'
-                                }
-                            ]
-                        }
-                    ];
-
-                    const pluginArray = {
-                        __proto__: pluginArrayProto
-                    };
-
-                    // 设置插件数组
-                    plugins.forEach((pluginData, index) => {
-                        const pluginProxy = createPluginProxy(pluginData);
-
-                        Object.defineProperty(pluginArray, index, {
-                            value: pluginProxy,
-                            writable: false,
-                            enumerable: true,
-                            configurable: true
-                        });
-
-                        Object.defineProperty(pluginArray, pluginData.name, {
-                            value: pluginProxy,
-                            writable: false,
-                            enumerable: false,
-                            configurable: true
-                        });
-                    });
-
-                    Object.defineProperty(pluginArray, 'length', {
-                        value: plugins.length,
-                        writable: false,
-                        enumerable: true,
-                        configurable: true
-                    });
-
-                    return new Proxy(pluginArray, {
-                        get(target, prop) {
-                            if (prop === 'namedItem') {
-                                return function(name) {
-                                    return target[name];
-                                };
-                            }
-                            if (prop === 'item') {
-                                return function(index) {
-                                    return target[index];
-                                };
-                            }
-                            if (prop === 'refresh') {
-                                return function() {};
-                            }
-                            return Reflect.get(target, prop);
-                        },
-                        getOwnPropertyDescriptor(target, prop) {
-                            const descriptor = Reflect.getOwnPropertyDescriptor(target, prop);
-                            if (descriptor) {
-                                descriptor.configurable = true;
-                            }
-                            return descriptor;
-                        }
-                    });
-                };
-
-                // 创建MimeTypeArray代理
-                const createMimeTypeArrayProxy = (plugins) => {
-                    const mimeTypeArrayProto = Object.getPrototypeOf(navigator.mimeTypes);
-                    const mimeTypeArray = {
-                        __proto__: mimeTypeArrayProto
-                    };
-
-                    let mimeTypes = [];
-                    plugins.forEach(plugin => {
-                        plugin.mimeTypes.forEach(mt => {
-                            mimeTypes.push({
-                                type: mt.type,
-                                suffixes: mt.suffixes,
-                                description: mt.description,
-                                plugin: plugin
-                            });
-                        });
-                    });
-
-                    mimeTypes.forEach((mimeType, index) => {
-                        const mimeTypeProxy = createMimeTypeProxy(mimeType);
-
-                        Object.defineProperty(mimeTypeArray, index, {
-                            value: mimeTypeProxy,
-                            writable: false,
-                            enumerable: true,
-                            configurable: true
-                        });
-
-                        Object.defineProperty(mimeTypeArray, mimeType.type, {
-                            value: mimeTypeProxy,
-                            writable: false,
-                            enumerable: false,
-                            configurable: true
-                        });
-                    });
-
-                    Object.defineProperty(mimeTypeArray, 'length', {
-                        value: mimeTypes.length,
-                        writable: false,
-                        enumerable: true,
-                        configurable: true
-                    });
-
-                    return new Proxy(mimeTypeArray, {
-                        get(target, prop) {
-                            if (prop === 'namedItem') {
-                                return function(name) {
-                                    return target[name];
-                                };
-                            }
-                            if (prop === 'item') {
-                                return function(index) {
-                                    return target[index];
-                                };
-                            }
-                            return Reflect.get(target, prop);
-                        },
-                        getOwnPropertyDescriptor(target, prop) {
-                            const descriptor = Reflect.getOwnPropertyDescriptor(target, prop);
-                            if (descriptor) {
-                                descriptor.configurable = true;
-                            }
-                            return descriptor;
-                        }
-                    });
-                };
-
-                // 设置navigator.plugins和navigator.mimeTypes
-                const pluginArrayProxy = createPluginArrayProxy();
-                const mimeTypeArrayProxy = createMimeTypeArrayProxy(pluginArrayProxy);
-
-                Object.defineProperty(Navigator.prototype, 'plugins', {
-                    get: () => pluginArrayProxy,
-                    enumerable: true,
-                    configurable: true
-                });
-
-                Object.defineProperty(Navigator.prototype, 'mimeTypes', {
-                    get: () => mimeTypeArrayProxy,
-                    enumerable: true,
-                    configurable: true
-                });
-
-            } catch (e) {
-                // 忽略错误，继续执行
-            }
-        });
-    }
-    
-    /**
      * 注入 WebGL
      */
-    async #evaluateInjectWebGLProtection(page) {
+    async #evaluateInjectWebGLProtection(page, fingerprint) {
         await page.evaluateOnNewDocument(() => {
             if (!window.WebGLRenderingContext) return;
 
@@ -680,7 +250,7 @@ class FingerprintSimulator {
     /**
      * 注入 Canvas
      */
-    async #evaluateInjectCanvasProtection(page) {
+    async #evaluateInjectCanvasProtection(page, fingerprint) {
         await page.evaluateOnNewDocument(() => {
             const modifyPixel = (data) => {
                 // 使用确定性的像素修改方法
@@ -787,7 +357,7 @@ class FingerprintSimulator {
     /**
      * 注入 Web Audio
      */
-    async #evaluateInjectWebAudioProtection(page) {
+    async #evaluateInjectWebAudioProtection(page, fingerprint) {
         // 注入 Web Audio API 保护
         await page.evaluateOnNewDocument(() => {
             if (window.AudioContext || window.webkitAudioContext) {
@@ -808,6 +378,139 @@ class FingerprintSimulator {
                 }
             }
         });
+    }
+
+    /**
+     * 注入存储性能模拟
+     * @private
+     */
+    async #evaluateInjectStorageProtection(page, fingerprint) {
+        const storage = fingerprint.device.storage;
+        
+        // 1. 设置存储配额
+        await page.evaluate((storageInfo) => {
+            // 模拟 navigator.storage API
+            if (navigator.storage) {
+                const originalEstimate = navigator.storage.estimate;
+                navigator.storage.estimate = async () => ({
+                    quota: storageInfo.quota,
+                    usage: storageInfo.usage,
+                    persistent: storageInfo.persistent,
+                    temporary: storageInfo.temporary
+                });
+
+                const originalPersist = navigator.storage.persist;
+                navigator.storage.persist = async () => storageInfo.persistent;
+
+                const originalPersisted = navigator.storage.persisted;
+                navigator.storage.persisted = async () => storageInfo.persistent;
+            }
+
+            // 模拟 webkitRequestFileSystem API
+            if (window.webkitRequestFileSystem) {
+                const originalRequestFS = window.webkitRequestFileSystem;
+                window.webkitRequestFileSystem = (type, size, successCallback, errorCallback) => {
+                    // 模拟 I/O 延迟
+                    setTimeout(() => {
+                        if (size > storageInfo.quota) {
+                            errorCallback(new Error('Quota exceeded'));
+                            return;
+                        }
+                        originalRequestFS(type, size, successCallback, errorCallback);
+                    }, storageInfo.ioTiming.seekLatencyMs + storageInfo.ioTiming.readLatencyMs);
+                };
+            }
+
+            // 模拟 IndexedDB 性能
+            if (window.indexedDB) {
+                const originalIndexedDB = window.indexedDB;
+                window.indexedDB = new Proxy(originalIndexedDB, {
+                    get: (target, prop) => {
+                        const original = target[prop];
+                        if (typeof original === 'function') {
+                            return new Proxy(original, {
+                                apply: (target, thisArg, args) => {
+                                    // 模拟 I/O 延迟
+                                    return new Promise((resolve) => {
+                                        setTimeout(() => {
+                                            resolve(Reflect.apply(target, thisArg, args));
+                                        }, storageInfo.ioTiming.readLatencyMs);
+                                    });
+                                }
+                            });
+                        }
+                        return original;
+                    }
+                });
+            }
+
+            // 模拟 localStorage 和 sessionStorage 性能
+            const createStorageProxy = (storage) => {
+                return new Proxy(storage, {
+                    get: (target, prop) => {
+                        const original = target[prop];
+                        if (typeof original === 'function') {
+                            return new Proxy(original, {
+                                apply: (target, thisArg, args) => {
+                                    // 模拟 I/O 延迟
+                                    const delay = prop === 'getItem' ? 
+                                        storageInfo.ioTiming.readLatencyMs : 
+                                        storageInfo.ioTiming.writeLatencyMs;
+                                    
+                                    return new Promise((resolve) => {
+                                        setTimeout(() => {
+                                            resolve(Reflect.apply(target, thisArg, args));
+                                        }, delay);
+                                    });
+                                }
+                            });
+                        }
+                        return original;
+                    }
+                });
+            };
+
+            if (window.localStorage) {
+                window.localStorage = createStorageProxy(window.localStorage);
+            }
+            if (window.sessionStorage) {
+                window.sessionStorage = createStorageProxy(window.sessionStorage);
+            }
+
+            // 模拟 File API 性能
+            if (window.File && window.FileReader && window.FileList && window.Blob) {
+                const originalFileReader = window.FileReader;
+                window.FileReader = class extends originalFileReader {
+                    constructor() {
+                        super();
+                        const methods = ['readAsArrayBuffer', 'readAsBinaryString', 'readAsDataURL', 'readAsText'];
+                        methods.forEach(method => {
+                            const original = this[method];
+                            this[method] = function(...args) {
+                                setTimeout(() => {
+                                    original.apply(this, args);
+                                }, storageInfo.ioTiming.readLatencyMs);
+                            };
+                        });
+                    }
+                };
+            }
+        }, storage);
+
+        // 2. 设置存储性能特征
+        await page.evaluate((storageInfo) => {
+            // 注入性能特征检测结果
+            if (window.performance && window.performance.memory) {
+                const originalNow = performance.now;
+                performance.now = function() {
+                    const baseTime = originalNow.call(performance);
+                    // 根据存储类型添加特征性延迟
+                    const storageLatency = storageInfo.ioTiming.readLatencyMs + 
+                                         storageInfo.ioTiming.writeLatencyMs;
+                    return baseTime + (Math.random() * storageLatency);
+                };
+            }
+        }, storage);
     }
 
     /**
@@ -898,22 +601,306 @@ class FingerprintSimulator {
      * @private
      */
     async #cdpSetPerformanceMetrics(client, fingerprint) {
-        // 设置CPU性能
-        await client.send('Emulation.setCPUThrottlingRate', { 
-            rate: 1 
-        }).catch(() => {});
+        try {
+            // 设置CPU性能
+            await client.send('Emulation.setCPUThrottlingRate', { 
+                rate: 1 
+            }).catch(() => {});
 
-        // 启用网络
-        await client.send('Network.enable').catch(() => {});
+            // 启用网络
+            await client.send('Network.enable').catch(() => {});
 
-        // 设置网络条件
-        await client.send('Network.emulateNetworkConditions', {
-            offline: false,
-            latency: fingerprint.network.rtt || 50,
-            // 将 Mbps 转换为 bytes/s (1 Mbps = 131072 bytes/s)
-            downloadThroughput: (fingerprint.network.downlink || 10) * 131072,
-            uploadThroughput: ((fingerprint.network.downlink || 10) / 2) * 131072
-        }).catch(() => {});
+            // 设置网络条件
+            await client.send('Network.emulateNetworkConditions', {
+                offline: false,
+                latency: fingerprint.network.rtt || 50,
+                // 将 Mbps 转换为 bytes/s (1 Mbps = 131072 bytes/s)
+                downloadThroughput: (fingerprint.network.downlink || 10) * 131072,
+                uploadThroughput: ((fingerprint.network.downlink || 10) / 2) * 131072
+            }).catch(() => {});
+
+        } catch (error) {
+            logger.error('设置性能和硬件指标时出错:', error);
+            // 继续执行，不中断流程
+        }
+    }
+
+    /**
+     * 设置内存相关指标
+     * @private
+     */
+    async #cdpSetMemoryMetrics(client, fingerprint) {
+        try {
+            // 1. 设置设备内存
+            await client.send('Emulation.setDeviceMemoryOverride', {
+                deviceMemory: fingerprint.browser.deviceMemory
+            }).catch(() => {});
+
+            // 2. 注入性能内存对象
+            await client.send('Runtime.evaluate', {
+                expression: `
+                    (() => {
+                        // 保存原始的performance.memory
+                        const originalMemory = performance.memory;
+                        
+                        // 创建新的memory对象
+                        const memoryDescriptor = {
+                            value: {
+                                jsHeapSizeLimit: ${fingerprint.device.memory.jsHeapSizeLimit},
+                                totalJSHeapSize: ${fingerprint.device.memory.totalJSHeapSize},
+                                usedJSHeapSize: ${fingerprint.device.memory.usedJSHeapSize}
+                            },
+                            configurable: true,
+                            enumerable: true,
+                            writable: false
+                        };
+
+                        // 替换performance.memory
+                        Object.defineProperty(performance, 'memory', memoryDescriptor);
+
+                        // 保护memory对象不被修改
+                        Object.freeze(performance.memory);
+                    })();
+                `,
+                returnByValue: true
+            }).catch(() => {});
+
+            // 3. 设置WebAssembly内存限制
+            await client.send('Runtime.evaluate', {
+                expression: `
+                    (() => {
+                        const originalWebAssembly = WebAssembly;
+                        const memoryLimit = ${fingerprint.browser.deviceMemory * 1024}; // 转换为MB
+
+                        // 代理WebAssembly.Memory构造函数
+                        const MemoryProxy = new Proxy(WebAssembly.Memory, {
+                            construct(target, args) {
+                                const [{ initial, maximum }] = args;
+                                
+                                // 确保内存限制合理
+                                if (maximum && maximum > memoryLimit) {
+                                    args[0].maximum = memoryLimit;
+                                }
+                                
+                                return Reflect.construct(target, args);
+                            }
+                        });
+
+                        // 替换WebAssembly.Memory
+                        Object.defineProperty(WebAssembly, 'Memory', {
+                            value: MemoryProxy,
+                            writable: false,
+                            configurable: false,
+                            enumerable: true
+                        });
+
+                        // 保护WebAssembly对象
+                        Object.freeze(WebAssembly);
+                    })();
+                `,
+                returnByValue: true
+            }).catch(() => {});
+
+            // 4. 模拟内存压力（根据设备内存大小调整）
+            if (fingerprint.browser.deviceMemory <= 4) {
+                await client.send('Emulation.setAutomationOverride', { enabled: false });
+                await client.send('Runtime.evaluate', {
+                    expression: `
+                        (() => {
+                            // 模拟内存压力的函数
+                            const simulateMemoryPressure = () => {
+                                if (performance.memory) {
+                                    // 随机波动已使用的堆内存
+                                    const variation = Math.random() * 0.1; // 10%的随机波动
+                                    performance.memory.usedJSHeapSize *= (1 + variation);
+                                }
+                            };
+
+                            // 定期模拟内存压力
+                            setInterval(simulateMemoryPressure, 5000);
+                        })();
+                    `,
+                    returnByValue: true
+                }).catch(() => {});
+            }
+
+        } catch (error) {
+            logger.error('设置内存指标时出错:', error);
+            // 继续执行，不中断流程
+        }
+    }
+
+    /**
+     * 设置存储相关指标
+     * @private
+     */
+    async #cdpSetStorageMetrics(client, fingerprint) {
+        const storage = fingerprint.device.storage;
+        
+        try {
+            // 1. 启用存储域和性能域
+            await client.send('Storage.enable');
+            await client.send('Performance.enable');
+
+            // 2. 设置存储模拟
+            await client.send('Emulation.setHardwareConcurrencyOverride', {
+                hardwareConcurrency: fingerprint.browser.hardwareConcurrency
+            }).catch(() => {});
+
+            // 3. 设置存储性能特征
+            await client.send('Emulation.setPerformanceConfigurationOverride', {
+                timeoutScale: this.#calculateTimeoutScale(storage),
+                maxCPUSpeedRate: this.#calculateCPUSpeed(storage),
+                hardwareProperties: {
+                    'storage.type': storage.type,
+                    'storage.quota': storage.quota,
+                    'storage.speed': this.#calculateThroughput(storage),
+                    'storage.latency': storage.ioTiming.readLatencyMs
+                }
+            }).catch(() => {});
+
+            // 4. 设置配额和使用情况追踪
+            await client.send('Storage.setQuotaOverride', {
+                quotaSize: storage.quota
+            }).catch(() => {});
+
+            // 5. 设置存储估算
+            await client.send('Storage.overrideEstimate', {
+                quota: storage.quota,
+                usage: storage.usage
+            }).catch(() => {});
+
+            // 6. 设置存储压力模拟
+            await client.send('Storage.setPressureNotificationOverride', {
+                pressure: storage.type === 'hdd' ? 'moderate' : 'none'
+            }).catch(() => {});
+
+            // 7. 设置文件系统API配额
+            await client.send('Storage.overrideFileSystemQuota', {
+                origin: '*',
+                quota: storage.storageQuota,
+                persistent: storage.persistent,
+                temporary: storage.temporary
+            }).catch(() => {});
+
+            // 8. 设置存储访问延迟模拟
+            await client.send('Network.emulateExtraLatency', {
+                latency: storage.ioTiming.seekLatencyMs
+            }).catch(() => {});
+
+            // 9. 设置存储性能配置文件
+            await client.send('Emulation.setPerformanceProfile', {
+                profile: this.#getStorageProfile(storage)
+            }).catch(() => {});
+
+            // 10. 设置虚拟时间环境（影响存储操作的时间戳）
+            await client.send('Emulation.setVirtualTimePolicy', {
+                policy: 'advance',
+                budget: storage.ioTiming.readLatencyMs
+            }).catch(() => {});
+
+            // 11. 注入 navigator.storage 覆盖
+            await client.send('Runtime.evaluate', {
+                expression: `
+                    (() => {
+                        if (navigator.storage) {
+                            const originalEstimate = navigator.storage.estimate;
+                            Object.defineProperty(navigator.storage, 'estimate', {
+                                value: async () => ({
+                                    quota: ${storage.quota},
+                                    usage: ${storage.usage},
+                                    usageDetails: {
+                                        indexedDB: ${Math.floor(storage.usage * 0.3)},
+                                        files: ${Math.floor(storage.usage * 0.4)},
+                                        caches: ${Math.floor(storage.usage * 0.2)},
+                                        serviceWorkerRegistrations: ${Math.floor(storage.usage * 0.1)}
+                                    }
+                                }),
+                                writable: false,
+                                configurable: true
+                            });
+                        }
+                    })();
+                `,
+                returnByValue: true
+            }).catch(() => {});
+
+            logger.info('存储指标设置完成');
+
+        } catch (error) {
+            logger.error('设置存储指标时出错:', error);
+            // 继续执行，不中断流程
+        }
+    }
+
+    /**
+     * 计算存储类型对应的超时比例
+     * @private
+     */
+    #calculateTimeoutScale(storage) {
+        switch (storage.type) {
+            case 'nvme':
+                return 0.8;  // NVMe更快，减少超时时间
+            case 'ssd':
+                return 1.0;  // SSD标准超时时间
+            case 'hdd':
+                return 1.5;  // HDD较慢，增加超时时间
+            default:
+                return 1.0;
+        }
+    }
+
+    /**
+     * 计算存储类型对应的CPU速度比例
+     * @private
+     */
+    #calculateCPUSpeed(storage) {
+        switch (storage.type) {
+            case 'nvme':
+                return 1.2;  // NVMe系统通常配置更高
+            case 'ssd':
+                return 1.0;  // SSD标准配置
+            case 'hdd':
+                return 0.8;  // HDD系统通常配置较低
+            default:
+                return 1.0;
+        }
+    }
+
+    /**
+     * 获取存储性能配置文件
+     * @private
+     */
+    #getStorageProfile(storage) {
+        switch (storage.type) {
+            case 'nvme':
+                return 'high-end-desktop';
+            case 'ssd':
+                return 'desktop';
+            case 'hdd':
+                return 'mobile';
+            default:
+                return 'desktop';
+        }
+    }
+
+    /**
+     * 根据存储类型计算吞吐量
+     * @private
+     */
+    #calculateThroughput(storage) {
+        // 根据存储类型返回典型的吞吐量 (bytes/s)
+        const MB = 1024 * 1024;
+        switch (storage.type) {
+            case 'nvme':
+                return 3500 * MB;  // ~3.5 GB/s
+            case 'ssd':
+                return 550 * MB;   // ~550 MB/s
+            case 'hdd':
+                return 120 * MB;   // ~120 MB/s
+            default:
+                return 250 * MB;   // 默认值
+        }
     }
 }
 
