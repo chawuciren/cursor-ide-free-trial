@@ -783,9 +783,12 @@ class FingerprintSimulator {
                 temporary: storage.temporary
             }).catch(() => {});
 
-            // 8. 设置存储访问延迟模拟
-            await client.send('Network.emulateExtraLatency', {
-                latency: storage.ioTiming.seekLatencyMs
+            // 6. 设置 I/O 延迟模拟
+            await client.send('Network.emulateNetworkConditions', {
+                offline: false,
+                latency: storage.ioTiming.seekLatencyMs,
+                downloadThroughput: this.#calculateThroughput(storage),
+                uploadThroughput: this.#calculateThroughput(storage) * 0.8  // 上传速度通常略低于下载速度
             }).catch(() => {});
 
             // 9. 设置存储性能配置文件
@@ -799,30 +802,15 @@ class FingerprintSimulator {
                 budget: storage.ioTiming.readLatencyMs
             }).catch(() => {});
 
-            // 11. 注入 navigator.storage 覆盖
-            await client.send('Runtime.evaluate', {
-                expression: `
-                    (() => {
-                        if (navigator.storage) {
-                            const originalEstimate = navigator.storage.estimate;
-                            Object.defineProperty(navigator.storage, 'estimate', {
-                                value: async () => ({
-                                    quota: ${storage.quota},
-                                    usage: ${storage.usage},
-                                    usageDetails: {
-                                        indexedDB: ${Math.floor(storage.usage * 0.3)},
-                                        files: ${Math.floor(storage.usage * 0.4)},
-                                        caches: ${Math.floor(storage.usage * 0.2)},
-                                        serviceWorkerRegistrations: ${Math.floor(storage.usage * 0.1)}
-                                    }
-                                }),
-                                writable: false,
-                                configurable: true
-                            });
-                        }
-                    })();
-                `,
-                returnByValue: true
+            // 9. 设置服务工作线程存储
+            await client.send('Storage.setServiceWorkerOverride', {
+                size: Math.floor(storage.quota * 0.05)  // Service Worker通常使用5%的配额
+            }).catch(() => {});
+
+            // 10. 设置清理策略
+            await client.send('Storage.setClearDataOverride', {
+                quotaOverride: storage.quota,
+                usageOverride: storage.usage
             }).catch(() => {});
 
             logger.info('存储指标设置完成');
