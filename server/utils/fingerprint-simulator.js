@@ -602,9 +602,33 @@ class FingerprintSimulator {
      */
     async #cdpSetPerformanceMetrics(client, fingerprint) {
         try {
-            // 设置CPU性能
+            // 设置CPU核心数
+            await client.send('Emulation.setDefaultBackgroundColorOverride', {
+                color: { r: 0, g: 0, b: 0, a: 0 }
+            }).catch(() => {});
+
+            // 设置CPU性能配置
             await client.send('Emulation.setCPUThrottlingRate', { 
                 rate: 1 
+            }).catch(() => {});
+
+            // 设置CPU核心数和线程数
+            await client.send('Emulation.setHardwareConcurrencyOverride', {
+                hardwareConcurrency: fingerprint.device.cpu.threads
+            }).catch(() => {});
+
+            // 设置CPU性能特征
+            await client.send('Emulation.setPerformanceConfigurationOverride', {
+                timeoutScale: 1,
+                maxCPUSpeedRate: this.#calculateCPUSpeed(fingerprint.device.cpu),
+                hardwareProperties: {
+                    'cpu.cores': fingerprint.device.cpu.cores,
+                    'cpu.threads': fingerprint.device.cpu.threads,
+                    'cpu.architecture': fingerprint.device.cpu.architecture,
+                    'cpu.vendor': fingerprint.device.cpu.vendor,
+                    'cpu.model': fingerprint.device.cpu.model,
+                    'cpu.speed': fingerprint.device.cpu.speed
+                }
             }).catch(() => {});
 
             // 启用网络
@@ -619,9 +643,70 @@ class FingerprintSimulator {
                 uploadThroughput: ((fingerprint.network.downlink || 10) / 2) * 131072
             }).catch(() => {});
 
+            // 设置性能指标收集
+            await client.send('Performance.enable').catch(() => {});
+
+            // 设置CPU配置文件
+            await client.send('Emulation.setPerformanceProfile', {
+                profile: this.#getCPUProfile(fingerprint.device.cpu)
+            }).catch(() => {});
+
+            // 注入CPU信息
+            await client.send('Runtime.evaluate', {
+                expression: `
+                    (() => {
+                        // 模拟 navigator.hardwareConcurrency
+                        Object.defineProperty(navigator, 'hardwareConcurrency', {
+                            value: ${fingerprint.device.cpu.threads},
+                            writable: false,
+                            configurable: true
+                        });
+
+                        // 模拟 CPU 性能特征
+                        if (window.performance) {
+                            const originalNow = performance.now;
+                            performance.now = function() {
+                                const baseTime = originalNow.call(performance);
+                                // 根据CPU速度添加微小的变化
+                                const cpuVariation = (Math.random() * 0.1) * (${fingerprint.device.cpu.speed} / 4000);
+                                return baseTime + cpuVariation;
+                            };
+                        }
+                    })();
+                `,
+                returnByValue: true
+            }).catch(() => {});
+
         } catch (error) {
             logger.error('设置性能和硬件指标时出错:', error);
             // 继续执行，不中断流程
+        }
+    }
+
+    /**
+     * 计算CPU速度比例
+     * @private
+     */
+    #calculateCPUSpeed(cpu) {
+        // 基于CPU型号和架构计算性能比例
+        const baseSpeed = cpu.speed / 3000; // 标准化到3GHz
+        const architectureMultiplier = cpu.architecture.includes('arm') ? 0.8 : 1.0;
+        return baseSpeed * architectureMultiplier;
+    }
+
+    /**
+     * 获取CPU性能配置文件
+     * @private
+     */
+    #getCPUProfile(cpu) {
+        if (cpu.cores >= 16) {
+            return 'high-end-desktop';
+        } else if (cpu.cores >= 8) {
+            return 'desktop';
+        } else if (cpu.cores >= 4) {
+            return 'mobile';
+        } else {
+            return 'low-end-mobile';
         }
     }
 
@@ -833,23 +918,6 @@ class FingerprintSimulator {
                 return 1.0;  // SSD标准超时时间
             case 'hdd':
                 return 1.5;  // HDD较慢，增加超时时间
-            default:
-                return 1.0;
-        }
-    }
-
-    /**
-     * 计算存储类型对应的CPU速度比例
-     * @private
-     */
-    #calculateCPUSpeed(storage) {
-        switch (storage.type) {
-            case 'nvme':
-                return 1.2;  // NVMe系统通常配置更高
-            case 'ssd':
-                return 1.0;  // SSD标准配置
-            case 'hdd':
-                return 0.8;  // HDD系统通常配置较低
             default:
                 return 1.0;
         }

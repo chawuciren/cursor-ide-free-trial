@@ -44,11 +44,61 @@ class FingerprintGenerator {
 
     // CPU架构信息
     #cpuArchitectures = [
-        { arch: 'x86_64', bits: '64', wow64: false },
-        { arch: 'amd64', bits: '64', wow64: false },
-        { arch: 'x86', bits: '32', wow64: true },
-        { arch: 'arm64', bits: '64', wow64: false },
-        { arch: 'aarch64', bits: '64', wow64: false }
+        {
+            arch: 'x86_64',
+            bits: '64',
+            wow64: false,
+            oscpu: 'Windows NT 10.0; Win64; x64',
+            platform: 'Win32',
+            platformVersion: '10.0.0',
+            uaArchitecture: 'x64',
+            cores: [4, 6, 8],
+            threads: [8, 12, 16]
+        },
+        {
+            arch: 'amd64',
+            bits: '64',
+            wow64: false,
+            oscpu: 'Windows NT 10.0; Win64; AMD64',
+            platform: 'Win32',
+            platformVersion: '10.0.0',
+            uaArchitecture: 'amd64',
+            cores: [8, 12, 16],
+            threads: [16, 24, 32]
+        },
+        {
+            arch: 'x86',
+            bits: '32',
+            wow64: true,
+            oscpu: 'Windows NT 10.0; WOW64',
+            platform: 'Win32',
+            platformVersion: '10.0.0',
+            uaArchitecture: 'x86',
+            cores: [2, 4],
+            threads: [4, 8]
+        },
+        {
+            arch: 'arm64',
+            bits: '64',
+            wow64: false,
+            oscpu: 'Windows NT 10.0; Win64; ARM64',
+            platform: 'Win32',
+            platformVersion: '10.0.0',
+            uaArchitecture: 'arm64',
+            cores: [8, 10],
+            threads: [8, 10]
+        },
+        {
+            arch: 'aarch64',
+            bits: '64',
+            wow64: false,
+            oscpu: 'Linux aarch64',
+            platform: 'Linux aarch64',
+            platformVersion: '5.15.0',
+            uaArchitecture: 'aarch64',
+            cores: [8, 12],
+            threads: [8, 12]
+        }
     ];
 
     // GPU供应商信息
@@ -177,14 +227,29 @@ class FingerprintGenerator {
     // 硬件配置信息
     #hardwareConcurrency = [4, 6, 8, 10, 12, 16, 24, 32, 48, 64];
     #deviceMemory = [0.25, 0.5, 1, 2, 4, 8];  // Chrome允许的标准值
-    #memoryInfo = [
-        // 4GB配置
-        { jsHeapSizeLimit: 2172649472, totalJSHeapSize: 1172649472, usedJSHeapSize: 950266368 },
-        // 8GB配置
-        { jsHeapSizeLimit: 4294705152, totalJSHeapSize: 2172649472, usedJSHeapSize: 1750266368 },
-        // 16GB配置
-        { jsHeapSizeLimit: 8589410304, totalJSHeapSize: 4345298944, usedJSHeapSize: 3500532736 }
-    ];
+    #memoryInfo = {
+        '0.25': [
+            { jsHeapSizeLimit: 543162368, totalJSHeapSize: 203162368, usedJSHeapSize: 180266368 }
+        ],
+        '0.5': [
+            { jsHeapSizeLimit: 1086324736, totalJSHeapSize: 486324736, usedJSHeapSize: 380532736 }
+        ],
+        '1': [
+            { jsHeapSizeLimit: 2172649472, totalJSHeapSize: 872649472, usedJSHeapSize: 650266368 }
+        ],
+        '2': [
+            { jsHeapSizeLimit: 2172649472, totalJSHeapSize: 1172649472, usedJSHeapSize: 950266368 },
+            { jsHeapSizeLimit: 2172649472, totalJSHeapSize: 1372649472, usedJSHeapSize: 1150266368 }
+        ],
+        '4': [
+            { jsHeapSizeLimit: 4294705152, totalJSHeapSize: 2172649472, usedJSHeapSize: 1750266368 },
+            { jsHeapSizeLimit: 4294705152, totalJSHeapSize: 2572649472, usedJSHeapSize: 2050266368 }
+        ],
+        '8': [
+            { jsHeapSizeLimit: 8589410304, totalJSHeapSize: 4345298944, usedJSHeapSize: 3500532736 },
+            { jsHeapSizeLimit: 8589410304, totalJSHeapSize: 5345298944, usedJSHeapSize: 4500532736 }
+        ]
+    };
 
     // 存储配置信息
     #storageInfo = [
@@ -285,18 +350,101 @@ class FingerprintGenerator {
         'Europe/Moscow'
     ];
 
+    // 网络配置信息
+    #networkConfigs = [
+        {
+            type: '4g',
+            effectiveType: '4g',
+            downlink: [20, 25, 30, 35, 40],
+            downlinkMax: [100, 150, 200],
+            rtt: [35, 40, 45, 50],
+            saveData: false
+        },
+        {
+            type: '5g',
+            effectiveType: '4g',
+            downlink: [50, 100, 150, 200],
+            downlinkMax: [500, 1000, 2000],
+            rtt: [10, 15, 20, 25],
+            saveData: false
+        },
+        {
+            type: 'wifi',
+            effectiveType: '4g',
+            downlink: [15, 20, 25, 30],
+            downlinkMax: [50, 100, 150],
+            rtt: [20, 25, 30, 35],
+            saveData: false
+        },
+        {
+            type: 'ethernet',
+            effectiveType: '4g',
+            downlink: [80, 100, 150, 200],
+            downlinkMax: [1000, 2000, 10000],
+            rtt: [1, 2, 3, 5],
+            saveData: false
+        }
+    ];
 
     // 媒体设备配置
-    #mediaDevices = {
-        audioInputs: [
-            { deviceId: 'default', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
-            { deviceId: 'communications', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
-        ],
-        audioOutputs: [
-            { deviceId: 'default', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
-            { deviceId: 'communications', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
-        ],
-        videoInputs: []
+    #mediaDeviceConfigs = {
+        basic: {
+            audioInputs: [
+                { deviceId: 'default', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            audioOutputs: [
+                { deviceId: 'default', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            videoInputs: []
+        },
+        gaming: {
+            audioInputs: [
+                { deviceId: 'default', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'microphone', kind: 'audioinput', label: 'Gaming Headset Microphone', groupId: 'a9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            audioOutputs: [
+                { deviceId: 'default', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'speakers', kind: 'audiooutput', label: 'Gaming Headset', groupId: 'a9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            videoInputs: []
+        },
+        office: {
+            audioInputs: [
+                { deviceId: 'default', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'microphone', kind: 'audioinput', label: 'Conference Microphone', groupId: 'b9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            audioOutputs: [
+                { deviceId: 'default', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'speakers', kind: 'audiooutput', label: 'Conference Speakers', groupId: 'b9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            videoInputs: [
+                { deviceId: 'webcam', kind: 'videoinput', label: 'Conference Camera', groupId: 'b9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ]
+        },
+        streaming: {
+            audioInputs: [
+                { deviceId: 'default', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audioinput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'microphone1', kind: 'audioinput', label: 'Streaming Microphone', groupId: 'c9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'microphone2', kind: 'audioinput', label: 'Secondary Microphone', groupId: 'd9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            audioOutputs: [
+                { deviceId: 'default', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'communications', kind: 'audiooutput', label: '', groupId: '89738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'speakers1', kind: 'audiooutput', label: 'Studio Monitors', groupId: 'c9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'speakers2', kind: 'audiooutput', label: 'Stream Output', groupId: 'd9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ],
+            videoInputs: [
+                { deviceId: 'camera1', kind: 'videoinput', label: 'Streaming Camera', groupId: 'c9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' },
+                { deviceId: 'camera2', kind: 'videoinput', label: 'Secondary Camera', groupId: 'd9738d45bb1ea4d3bf8c6644d9f8c45a6a37c666c5a40e48d189c06be4c32a48' }
+            ]
+        }
     };
 
     // 语音配置
@@ -402,16 +550,18 @@ class FingerprintGenerator {
         try {
             logger.info('开始生成浏览器指纹...');
 
-            // 随机选择CPU架构
+            // 随机选择CPU架构和核心数
             const cpu = this.#getRandomItem(this.#cpuArchitectures);
+            const cpuCores = this.#getRandomItem(cpu.cores);
+            const cpuThreads = this.#getRandomItem(cpu.threads);
             
             // 随机选择GPU和WebGL信息
             const gpu = this.#getRandomItem(this.#gpuVendors);
             
             // 随机选择硬件配置
-            const hardwareConcurrency = this.#getRandomItem(this.#hardwareConcurrency);
+            const hardwareConcurrency = cpuThreads;
             const deviceMemory = this.#getRandomItem(this.#deviceMemory);
-            const memoryInfo = this.#getRandomItem(this.#memoryInfo);
+            const memoryInfo = this.#getRandomItem(this.#memoryInfo[deviceMemory.toString()]);
             
             // 随机选择屏幕分辨率
             const screen = this.#getRandomItem(this.#screenResolutions);
@@ -474,6 +624,20 @@ class FingerprintGenerator {
             // 随机选择存储配置
             const storage = this.#getRandomItem(this.#storageInfo);
 
+            // 随机选择网络配置
+            const networkConfig = this.#getRandomItem(this.#networkConfigs);
+            const network = {
+                type: networkConfig.type,
+                effectiveType: networkConfig.effectiveType,
+                downlink: this.#getRandomItem(networkConfig.downlink),
+                downlinkMax: this.#getRandomItem(networkConfig.downlinkMax),
+                rtt: this.#getRandomItem(networkConfig.rtt),
+                saveData: networkConfig.saveData
+            };
+
+            // 随机选择媒体设备配置
+            const mediaDevices = this.#getRandomItem(Object.values(this.#mediaDeviceConfigs));
+
             const fingerprint = {
                 // 浏览器信息
                 browser: {
@@ -487,14 +651,12 @@ class FingerprintGenerator {
                     ],
                     acceptLanguage,
                     languages,
-                    platform: 'Win32',
-                    platformVersion: '10.0.0',
+                    platform: cpu.platform,
+                    platformVersion: cpu.platformVersion,
                     architecture: cpu.arch,
                     bitness: cpu.bits,
                     wow64: cpu.wow64,
-                    mobile: false,
-                    model: '',
-                    oscpu: 'Windows NT 10.0; Win64; x64',
+                    oscpu: cpu.oscpu,
                     connectionRtt: 50,
                     deviceMemory,
                     hardwareConcurrency,
@@ -550,7 +712,7 @@ class FingerprintGenerator {
                             }
                         }
                     },
-                    mediaDevices: this.#mediaDevices,
+                    mediaDevices: mediaDevices,
                     fonts: this.#fontList,
                     voices: this.#voices,
                     canvas: this.#canvasParams,
@@ -566,19 +728,19 @@ class FingerprintGenerator {
                         estimatedAvailableSpace: storage.estimatedAvailableSpace,
                         storageQuota: storage.storageQuota,
                         ioTiming: storage.ioTiming
+                    },
+                    cpu: {
+                        architecture: cpu.arch,
+                        cores: cpuCores,
+                        threads: cpuThreads,
+                        vendor: cpu.arch.includes('arm') ? 'ARM' : 'GenuineIntel',
+                        model: cpu.arch.includes('arm') ? 'ARMv8' : 'Intel(R) Core(TM) i7-10700K',
+                        speed: cpu.arch.includes('arm') ? 2400 : 3800
                     }
                 },
 
                 // 网络信息
-                network: {
-                    type: '4g',
-                    effectiveType: '4g',
-                    downlink: 10,
-                    downlinkMax: 10,
-                    rtt: 50,
-                    saveData: false,
-                    onchange: null
-                },
+                network,
 
                 // 时区信息
                 timezone: {
