@@ -56,6 +56,7 @@ class BrowserInitializer {
                         "--no-sandbox",
                         "--disable-blink-features=AutomationControlled",
                         "--disable-audio-output",
+                        "--enable-extensions",
                         `--disable-extensions-except=${extensionPath}`,
                         `--load-extension=${extensionPath}`
                     ],
@@ -86,7 +87,7 @@ class BrowserInitializer {
 
                 // 注入指纹
                 logger.info('开始注入浏览器指纹...');
-                await this.configureExtensions(browser);
+                // await this.configureExtensions(browser);
                 logger.info('浏览器指纹注入完成');
                 
                 // 根据配置决定是否进行指纹检查
@@ -94,6 +95,7 @@ class BrowserInitializer {
                     logger.info('开始进行浏览器指纹检查...');
                     const fingerprintPage = await browser.newPage();
                     const fingerprintCheck = await this.checkFingerprint(fingerprintPage);
+                    await delay(1000000);
                     await fingerprintPage.close();
 
                     // 如果指纹检查不通过，关闭浏览器并重试

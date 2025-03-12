@@ -1,0 +1,1 @@
+import{s}from"./runtime-674b75e7.js";var t=(o=>(o.SetHookRecords="set-hook-records",o.GetHookInfo="get-hook-info",o.StartHook="start-hook",o))(t||{});const r="my_fingerprint",a=o=>o.data?.[r];window.addEventListener("message",o=>{const e=a(o);switch(e?.type){case t.SetHookRecords:{s(e.data);break}}});
