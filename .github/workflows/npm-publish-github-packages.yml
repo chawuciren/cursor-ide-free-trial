@@ -10,6 +10,8 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       
@@ -19,7 +21,13 @@ jobs:
           node-version: 18
           
       - name: Install dependencies
-        run: npm ci
+        run: npm install
+      
+      - name: Check environment
+        run: |
+          dir
+          dir scripts
+          type package.json
         
       - name: Build public files
         run: node scripts/build.js
@@ -29,30 +37,23 @@ jobs:
         env:
           NODE_ENV: production
           
+      - name: List release directory
+        run: |
+          dir release
+          
       - name: Rename artifact for release
         run: |
           copy release\CursorIDEFreeTrial.exe release\CursorIDEFreeTrial-${{ github.event.release.tag_name }}.exe
-          
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./release/CursorIDEFreeTrial-${{ github.event.release.tag_name }}.exe
-          asset_name: CursorIDEFreeTrial-${{ github.event.release.tag_name }}.exe
-          asset_content_type: application/octet-stream
           
       - name: Create ZIP archive of unpacked app
         run: |
           Compress-Archive -Path release\win-unpacked\* -DestinationPath release\CursorIDEFreeTrial-unpacked-${{ github.event.release.tag_name }}.zip
           
-      - name: Upload Unpacked App ZIP
-        uses: actions/upload-release-asset@v1
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release/CursorIDEFreeTrial-${{ github.event.release.tag_name }}.exe
+            release/CursorIDEFreeTrial-unpacked-${{ github.event.release.tag_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./release/CursorIDEFreeTrial-unpacked-${{ github.event.release.tag_name }}.zip
-          asset_name: CursorIDEFreeTrial-unpacked-${{ github.event.release.tag_name }}.zip
-          asset_content_type: application/zip
