@@ -29,6 +29,19 @@ async function updateLicenseInfo() {
         console.log('Machine Code Response:', machineCodeResponse);
         console.log('User Info Response:', userInfoResponse);
         
+        // 测试数据接口获取是否正确
+        if (userInfoResponse.success && userInfoResponse.data && userInfoResponse.data.cursor) {
+            console.log('用户数据获取成功:',
+                '\n账号邮箱:', userInfoResponse.data.cursor.email,
+                '\n账号额度:', userInfoResponse.data.cursor.maxRequestUsage,
+                '\n已使用额度:', userInfoResponse.data.cursor.numRequests
+            );
+            appendToConsole('用户数据获取成功');
+        } else {
+            console.error('用户数据获取失败或格式不正确:', userInfoResponse);
+            appendToConsole('用户数据获取失败', 'error');
+        }
+        
         const status = licenseResponse.status;
         const machineCode = machineCodeResponse.machineCode;
         
@@ -47,6 +60,11 @@ async function updateLicenseInfo() {
         let html = `
             <div class="form-container" style="max-height: calc(100vh - 150px); overflow-y: auto; padding: 20px;">
                 <h3>用户信息</h3>
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-outline-primary" onclick="updateLicenseInfo()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新信息
+                    </button>
+                </div>
                 <div class="card mb-3">
                     <div class="card-body">
                         <div class="mb-3">
@@ -64,7 +82,10 @@ async function updateLicenseInfo() {
         // 显示用户信息和授权信息
         html += `
             <div class="card mb-3">
-                <div class="card-header">编辑器登录信息</div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>编辑器登录信息</span>
+                    <span class="badge bg-info" id="dataStatus"></span>
+                </div>
                 <div class="card-body">
                     <div class="list-group">
                         <div class="list-group-item bg-dark-subtle border-dark text-light d-flex justify-content-between align-items-center" style="background-color: #1a1a1a !important; border-color: #404040;">
@@ -220,6 +241,28 @@ function copyMachineCode() {
 // 页面加载完成后更新信息
 document.addEventListener('DOMContentLoaded', () => {
     updateLicenseInfo();
+    
+    // 添加刷新按钮到导航标签
+    const userInfoTab = document.getElementById('user-info-tab');
+    if (userInfoTab && userInfoTab.parentElement) {
+        const refreshBtn = document.createElement('button');
+        refreshBtn.className = 'btn btn-sm btn-outline-secondary ms-2';
+        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+        refreshBtn.title = '刷新用户信息';
+        refreshBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            updateLicenseInfo();
+            document.getElementById('dataStatus').innerHTML = '正在刷新...';
+            setTimeout(() => {
+                document.getElementById('dataStatus').innerHTML = '已更新';
+                setTimeout(() => {
+                    document.getElementById('dataStatus').innerHTML = '';
+                }, 2000);
+            }, 1000);
+        };
+        userInfoTab.parentElement.appendChild(refreshBtn);
+    }
 });
 
 // 每分钟更新一次信息
