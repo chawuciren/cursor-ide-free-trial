@@ -1,36 +1,58 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
+# This workflow will build the Electron app and publish it as a GitHub release asset when a release is created
 # For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
 
-name: Node.js Package
+name: Publish Electron App
 
 on:
   release:
     types: [created]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm ci
-      - run: npm test
-
-  publish-gpr:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          registry-url: https://npm.pkg.github.com/
-      - run: npm ci
-      - run: npm publish
+          node-version: 18
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build public files
+        run: node scripts/build.js
+        
+      - name: Build Electron app
+        run: npm run build
         env:
-          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          NODE_ENV: production
+          
+      - name: Rename artifact for release
+        run: |
+          copy release\CursorIDEFreeTrial.exe release\CursorIDEFreeTrial-${{ github.event.release.tag_name }}.exe
+          
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./release/CursorIDEFreeTrial-${{ github.event.release.tag_name }}.exe
+          asset_name: CursorIDEFreeTrial-${{ github.event.release.tag_name }}.exe
+          asset_content_type: application/octet-stream
+          
+      - name: Create ZIP archive of unpacked app
+        run: |
+          Compress-Archive -Path release\win-unpacked\* -DestinationPath release\CursorIDEFreeTrial-unpacked-${{ github.event.release.tag_name }}.zip
+          
+      - name: Upload Unpacked App ZIP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./release/CursorIDEFreeTrial-unpacked-${{ github.event.release.tag_name }}.zip
+          asset_name: CursorIDEFreeTrial-unpacked-${{ github.event.release.tag_name }}.zip
+          asset_content_type: application/zip

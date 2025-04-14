@@ -1,7 +1,7 @@
 # This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
-name: Node.js CI
+name: Electron App Build CI
 
 on:
   push:
@@ -11,21 +11,38 @@ on:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+        os: [windows-latest]
+        node-version: [18.x]
+        # Electron应用通常在Node 18上构建更稳定
 
     steps:
     - uses: actions/checkout@v4
+    
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+    
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build public files
+      run: node scripts/build.js
+      
+    - name: Build Electron app for Windows
+      run: npm run build
+      env:
+        NODE_ENV: production
+      
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-${{ matrix.os }}
+        path: |
+          release/*.exe
+          release/win-unpacked/
