@@ -29,6 +29,12 @@ jobs:
           dir scripts
           type package.json
         
+      - name: Create node_win32 directory structure
+        run: |
+          mkdir node_win32
+          echo "// Placeholder file for build script" > node_win32\node.exe
+          dir node_win32
+        
       - name: Build public files
         run: node scripts/build.js
         

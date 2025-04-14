@@ -110,8 +110,9 @@ function copyNodeExecutable(platform, targetDir) {
         }
         console.log(`Copied Node environment to: ${nodeTargetDir}`);
     } else {
-        console.error(`Node directory not found: ${nodeSourceDir}`);
-        process.exit(1);
+        console.warn(`Node directory not found: ${nodeSourceDir}`);
+        console.log('Continuing build process without embedded Node.js runtime...');
+        // 不再退出进程，只是发出警告
     }
 }
 
