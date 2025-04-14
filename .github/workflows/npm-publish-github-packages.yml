@@ -22,12 +22,16 @@ jobs:
           
       - name: Install dependencies
         run: npm install
+        
+      - name: Install electron-builder globally
+        run: npm install -g electron-builder
       
       - name: Check environment
         run: |
           dir
           dir scripts
           type package.json
+          where electron-builder || echo "electron-builder not found in PATH"
         
       - name: Create node_win32 directory structure
         run: |

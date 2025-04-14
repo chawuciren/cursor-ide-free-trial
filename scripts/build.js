@@ -207,16 +207,21 @@ function buildServer() {
     const nodeModulesPath = path.join(sourceDir, 'node_modules');
     if (fs.existsSync(nodeModulesPath)) {
         fs.cpSync(nodeModulesPath, path.join(distServerDir, 'node_modules'), { recursive: true });
+        console.log(`Copied server node_modules to: ${path.join(distServerDir, 'node_modules')}`);
+    } else {
+        console.warn(`Server node_modules not found at: ${nodeModulesPath}`);
+        console.log('Continuing build process without server node_modules...');
     }
 }
 
 function buildElectronApp() {
     console.log(`Building Electron app (${buildType === 'dir' ? 'unpacked' : 'portable'})...`);
     
-    // Get the electron-builder command based on platform and build type
-    const builderCmd = `electron-builder ${buildType === 'dir' ? '--dir' : ''} --${currentPlatform === 'win32' ? 'win' : currentPlatform === 'darwin' ? 'mac' : 'linux'}`;
+    // 使用npx确保能找到electron-builder命令
+    const builderCmd = `npx electron-builder ${buildType === 'dir' ? '--dir' : ''} --${currentPlatform === 'win32' ? 'win' : currentPlatform === 'darwin' ? 'mac' : 'linux'}`;
     
     try {
+        console.log(`Executing command: ${builderCmd}`);
         execSync(builderCmd, { 
             stdio: 'inherit'
         });
