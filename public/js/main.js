@@ -1,43 +1,35 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // 初始化控制台
-    appendToConsole('系统初始化完成...');
-
-    // 标签页切换事件
-    if (typeof bootstrap !== 'undefined') {
-        const triggerTabList = document.querySelectorAll('.nav-link');
-        triggerTabList.forEach(function(triggerEl) {
-            const tabTrigger = new bootstrap.Tab(triggerEl);
-            triggerEl.addEventListener('click', function(event) {
-                event.preventDefault();
-                tabTrigger.show();
-                appendToConsole(`切换到${this.textContent}标签页`);
-            });
+    // 添加页面加载动画
+    const elements = document.querySelectorAll('.fade-in');
+    elements.forEach((el, index) => {
+        el.style.animationDelay = `${index * 0.1}s`;
+    });
+    
+    // 添加导航栏交互效果
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
         });
-    } else {
-        window.console.error('Bootstrap is not loaded');
-    }
-
-    // 按钮点击事件
-    document.querySelectorAll('.btn-primary').forEach(button => {
-        button.addEventListener('click', (e) => {
-            const action = e.target.textContent;
-            appendToConsole(`执行操作: ${action}`);
+        
+        link.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    // 添加按钮交互效果
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('mousedown', function() {
+            this.style.transform = 'scale(0.98)';
+        });
+        
+        btn.addEventListener('mouseup', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = '';
         });
     });
 });
-
-// 控制台功能
-const consoleOutput = document.getElementById('console');
-
-function appendToConsole(message, type = 'info') {
-    const line = document.createElement('div');
-    line.className = `console-line ${type}`;
-    line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-    consoleOutput.appendChild(line);
-    consoleOutput.scrollTop = consoleOutput.scrollHeight;
-}
-
-function clearConsole() {
-    consoleOutput.innerHTML = '';
-    appendToConsole('控制台已清除');
-} 

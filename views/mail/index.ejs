@@ -1,0 +1,251 @@
+<%- contentFor('body') %>
+<div class="mail-container">
+    <div class="mail-header fade-in">
+        <h1 class="section-title">邮件管理</h1>
+        <div class="mail-actions">
+            <button class="btn btn-secondary" id="mark-all-read-btn">
+                <i class="bi bi-envelope-open"></i> 全部设为已读
+            </button>
+            <a href="/mail/fetch" class="btn btn-primary" id="check-mail-btn">
+                <i class="bi bi-arrow-repeat"></i> 检查新邮件
+            </a>
+        </div>
+    </div>
+
+    <% if (locals.error) { %>
+        <div class="alert alert-danger fade-in">
+            <i class="bi bi-exclamation-triangle-fill"></i> <%= error %>
+        </div>
+    <% } %>
+
+    <% if (locals.session && session.mailCheckSuccess) { %>
+        <div class="alert alert-success fade-in">
+            <i class="bi bi-check-circle-fill"></i> 邮件检查完成，获取到 <%= session.mailCheckCount || 0 %> 封新邮件
+        </div>
+        <% session.mailCheckSuccess = false; %>
+    <% } %>
+
+    <% if (locals.session && session.mailCheckError) { %>
+        <div class="alert alert-danger fade-in">
+            <i class="bi bi-exclamation-triangle-fill"></i> 检查邮件失败: <%= session.mailCheckError %>
+        </div>
+        <% session.mailCheckError = false; %>
+    <% } %>
+
+    <% if (locals.session && session.markReadSuccess) { %>
+        <div class="alert alert-success fade-in">
+            <i class="bi bi-check-circle-fill"></i> 成功将 <%= session.markReadCount || 0 %> 封邮件标记为已读
+        </div>
+        <% session.markReadSuccess = false; %>
+    <% } %>
+
+    <div class="accounts-filters glass-card fade-in">
+        <form id="filter-form" action="/mail" method="GET">
+            <% if (typeof isRegularUser !== 'undefined' && isRegularUser) { %>
+                <!-- 普通用户只显示固定的收件账号，不可编辑 -->
+                <div class="filter-group">
+                    <label for="account-filter" class="form-label">收件账号</label>
+                    <input type="text" id="account-filter" class="form-control" value="<%= userEmail %>" readonly disabled>
+                    <input type="hidden" name="account" value="<%= userEmail %>">
+                </div>
+            <% } else { %>
+                <!-- 管理员可以选择任意账号 -->
+                <div class="filter-group">
+                    <label for="account-filter" class="form-label">收件账号</label>
+                    <input type="text" id="account-filter" name="account" class="form-control" placeholder="输入完整或部分账号..." value="<%= selectedAccount !== 'all' ? selectedAccount : '' %>">
+                </div>
+            <% } %>
+
+            <div class="filter-group">
+                <label for="sender-filter" class="form-label">发件人</label>
+                <input type="text" id="sender-filter" name="sender" class="form-control" placeholder="输入发件人..." value="<%= filters && filters.sender || '' %>">
+            </div>
+
+            <div class="filter-group">
+                <label for="subject-filter" class="form-label">邮件主题</label>
+                <input type="text" id="subject-filter" name="subject" class="form-control" placeholder="输入邮件主题..." value="<%= filters && filters.subject || '' %>">
+            </div>
+
+            <div class="filter-group">
+                <label for="status-filter" class="form-label">状态筛选</label>
+                <select id="status-filter" name="status" class="form-control">
+                    <option value="all" <%= filters && filters.status === 'all' ? 'selected' : '' %>>所有状态</option>
+                    <option value="read" <%= filters && filters.status === 'read' ? 'selected' : '' %>>已读</option>
+                    <option value="unread" <%= filters && filters.status === 'unread' ? 'selected' : '' %>>未读</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="has-attachments" class="form-label">附件筛选</label>
+                <select id="has-attachments" name="hasAttachments" class="form-control">
+                    <option value="all" <%= filters && filters.hasAttachments === 'all' ? 'selected' : '' %>>所有邮件</option>
+                    <option value="yes" <%= filters && filters.hasAttachments === 'yes' ? 'selected' : '' %>>有附件</option>
+                    <option value="no" <%= filters && filters.hasAttachments === 'no' ? 'selected' : '' %>>无附件</option>
+                </select>
+            </div>
+
+            <div class="filter-group date-range-group">
+                <label for="start-date" class="form-label">开始日期</label>
+                <input type="date" id="start-date" name="startDate" class="form-control" value="<%= filters && filters.startDate || '' %>">
+            </div>
+
+            <div class="filter-group date-range-group">
+                <label for="end-date" class="form-label">结束日期</label>
+                <input type="date" id="end-date" name="endDate" class="form-control" value="<%= filters && filters.endDate || '' %>">
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-filter"></i> 筛选
+                </button>
+                <a href="/mail" class="btn btn-secondary">
+                    <i class="bi bi-arrow-counterclockwise"></i> 重置
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="emails-container">
+        <% if (emails && emails.length > 0) { %>
+            <div class="emails-list glass-card fade-in">
+                <div class="email-list-header">
+                    <div class="email-col-sender">发件人</div>
+                    <div class="email-col-subject">主题</div>
+                    <div class="email-col-account">接收账号</div>
+                    <div class="email-col-date">日期</div>
+                    <div class="email-col-actions">操作</div>
+                </div>
+
+                <% emails.forEach(email => { %>
+                    <div class="email-row <%= email.is_read ? 'read' : 'unread' %>" data-account="<%= email.account %>" data-status="<%= email.is_read ? 'read' : 'unread' %>">
+                        <div class="email-col-sender" data-date="<%= email.date %>">
+                            <% if (!email.is_read) { %><span class="unread-dot"></span><% } %>
+                            <span class="email-sender"><%= email.sender %></span>
+                        </div>
+                        <div class="email-col-subject">
+                            <div class="email-subject"><%= email.subject %></div>
+                            <div class="email-preview"><%= email.preview %></div>
+                        </div>
+                        <div class="email-col-account"><%= email.account %></div>
+                        <div class="email-col-date"><%= email.date %></div>
+                        <div class="email-col-actions">
+                            <a href="/mail/view/<%= email.id %>" class="email-view-btn" title="查看详情">
+                                <i class="bi bi-envelope-open"></i>
+                            </a>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+
+            <% if (pagination && pagination.total > 0) { %>
+            <div class="pagination-container glass-card fade-in">
+                <div class="pagination-info">
+                    显示 <%= (pagination.page - 1) * pagination.pageSize + 1 %> - <%= Math.min(pagination.page * pagination.pageSize, pagination.total) %> 条，共 <%= pagination.total %> 条
+                </div>
+                <div class="pagination">
+                    <% if (pagination.page > 1) { %>
+                        <a href="<%= pagination.baseUrl %>?page=1&pageSize=<%= pagination.pageSize %>&account=<%= filters.account %>&sender=<%= filters.sender %>&subject=<%= filters.subject %>&status=<%= filters.status %>&hasAttachments=<%= filters.hasAttachments %>&startDate=<%= filters.startDate %>&endDate=<%= filters.endDate %>" class="page-link" title="首页">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                        <a href="<%= pagination.baseUrl %>?page=<%= pagination.page - 1 %>&pageSize=<%= pagination.pageSize %>&account=<%= filters.account %>&sender=<%= filters.sender %>&subject=<%= filters.subject %>&status=<%= filters.status %>&hasAttachments=<%= filters.hasAttachments %>&startDate=<%= filters.startDate %>&endDate=<%= filters.endDate %>" class="page-link" title="上一页">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    <% } else { %>
+                        <span class="page-link disabled" title="首页">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </span>
+                        <span class="page-link disabled" title="上一页">
+                            <i class="bi bi-chevron-left"></i>
+                        </span>
+                    <% } %>
+
+                    <%
+                    let startPage = Math.max(1, pagination.page - 2);
+                    let endPage = Math.min(pagination.pages, pagination.page + 2);
+
+                    // 确保显示5个页码（如果有足够的页数）
+                    if (endPage - startPage < 4 && pagination.pages > 4) {
+                        if (startPage === 1) {
+                            endPage = Math.min(5, pagination.pages);
+                        } else if (endPage === pagination.pages) {
+                            startPage = Math.max(1, pagination.pages - 4);
+                        }
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) { %>
+                        <% if (i === pagination.page) { %>
+                            <span class="page-link active"><%= i %></span>
+                        <% } else { %>
+                            <a href="<%= pagination.baseUrl %>?page=<%= i %>&pageSize=<%= pagination.pageSize %>&account=<%= filters.account %>&sender=<%= filters.sender %>&subject=<%= filters.subject %>&status=<%= filters.status %>&hasAttachments=<%= filters.hasAttachments %>&startDate=<%= filters.startDate %>&endDate=<%= filters.endDate %>" class="page-link"><%= i %></a>
+                        <% } %>
+                    <% } %>
+
+                    <% if (pagination.page < pagination.pages) { %>
+                        <a href="<%= pagination.baseUrl %>?page=<%= pagination.page + 1 %>&pageSize=<%= pagination.pageSize %>&account=<%= filters.account %>&sender=<%= filters.sender %>&subject=<%= filters.subject %>&status=<%= filters.status %>&hasAttachments=<%= filters.hasAttachments %>&startDate=<%= filters.startDate %>&endDate=<%= filters.endDate %>" class="page-link" title="下一页">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                        <a href="<%= pagination.baseUrl %>?page=<%= pagination.pages %>&pageSize=<%= pagination.pageSize %>&account=<%= filters.account %>&sender=<%= filters.sender %>&subject=<%= filters.subject %>&status=<%= filters.status %>&hasAttachments=<%= filters.hasAttachments %>&startDate=<%= filters.startDate %>&endDate=<%= filters.endDate %>" class="page-link" title="末页">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    <% } else { %>
+                        <span class="page-link disabled" title="下一页">
+                            <i class="bi bi-chevron-right"></i>
+                        </span>
+                        <span class="page-link disabled" title="末页">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </span>
+                    <% } %>
+                </div>
+                <div class="page-size-selector">
+                    <label for="page-size-select">每页显示:</label>
+                    <select id="page-size-select" class="form-control">
+                        <option value="10" <%= pagination.pageSize === 10 ? 'selected' : '' %>>10</option>
+                        <option value="20" <%= pagination.pageSize === 20 ? 'selected' : '' %>>20</option>
+                        <option value="50" <%= pagination.pageSize === 50 ? 'selected' : '' %>>50</option>
+                        <option value="100" <%= pagination.pageSize === 100 ? 'selected' : '' %>>100</option>
+                    </select>
+                </div>
+            </div>
+            <% } %>
+        <% } else { %>
+            <div class="empty-state glass-card fade-in">
+                <div class="empty-icon">
+                    <i class="bi bi-inbox"></i>
+                </div>
+                <p>暂无邮件</p>
+                <a href="/mail/fetch" class="btn btn-primary" id="check-mail-btn-empty">
+                    <i class="bi bi-arrow-repeat"></i> 检查新邮件
+                </a>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- 标记已读确认模态框 -->
+<div class="modal" id="mark-read-modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h2>确认标记已读</h2>
+            <button class="close-btn"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="modal-body">
+            <p>您确定要将符合当前筛选条件的所有未读邮件标记为已读吗？</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary cancel-btn">取消</button>
+            <button class="btn btn-primary confirm-mark-read-btn">确认</button>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
+
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->
+<script>
+    // 添加分页数据属性，供JS文件使用
+    document.documentElement.setAttribute('data-current-page', '<%= pagination ? pagination.page : 1 %>');
+    document.documentElement.setAttribute('data-page-size', '<%= pagination ? pagination.pageSize : 10 %>');
+</script>
+<script src="/js/mail.js"></script>

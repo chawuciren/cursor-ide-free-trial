@@ -1,0 +1,393 @@
+<%- contentFor('body') %>
+<div class="admin-container">
+    <div class="admin-header fade-in">
+        <h1 class="section-title">系统设置</h1>
+        <div class="admin-actions">
+            <button class="btn btn-primary" id="save-settings-btn">
+                <i class="bi bi-save"></i> 保存设置
+            </button>
+        </div>
+    </div>
+    
+    <div class="admin-content">
+        <div class="admin-tabs glass-card fade-in">
+            <div class="tab-header">
+                <button class="tab-btn active" data-tab="domains">域名管理</button>
+                <button class="tab-btn" data-tab="email">邮件设置</button>
+                <button class="tab-btn" data-tab="server">服务器设置</button>
+                <button class="tab-btn" data-tab="logs">日志设置</button>
+            </div>
+            
+            <div class="tab-content">
+                <div class="tab-pane active" id="domains-tab">
+                    <div class="domains-header">
+                        <h2 class="tab-title">Cloudflare 域名管理</h2>
+                        <button class="btn btn-primary add-domain-btn">
+                            <i class="bi bi-plus-circle"></i> 添加域名
+                        </button>
+                    </div>
+                    
+                    <div class="domains-list">
+                        <% if (settings.cloudflare && settings.cloudflare.length > 0) { %>
+                            <% settings.cloudflare.forEach((domain, index) => { %>
+                                <div class="domain-card glass-card" data-index="<%= index %>">
+                                    <div class="domain-header">
+                                        <h3 class="domain-name"><%= domain.domain %></h3>
+                                        <div class="domain-actions">
+                                            <button class="action-btn edit-domain-btn" title="编辑域名">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="action-btn delete-domain-btn" title="删除域名">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="domain-content">
+                                        <div class="domain-info">
+                                            <p><strong>转发邮箱:</strong> <%= domain.emailForward %></p>
+                                            <p><strong>Zone ID:</strong> <%= domain.zoneId.substring(0, 8) %>...</p>
+                                            <p><strong>API Token:</strong> ******</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        <% } else { %>
+                            <div class="empty-state">
+                                <p>暂无域名配置</p>
+                                <button class="btn btn-primary add-domain-btn">
+                                    <i class="bi bi-plus-circle"></i> 添加域名
+                                </button>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+                
+                <div class="tab-pane" id="email-tab">
+                    <h2 class="tab-title">邮件服务设置</h2>
+                    <!-- 邮件设置表单 -->
+                </div>
+                
+                <div class="tab-pane" id="server-tab">
+                    <h2 class="tab-title">服务器设置</h2>
+                    <!-- 服务器设置表单 -->
+                </div>
+                
+                <div class="tab-pane" id="logs-tab">
+                    <h2 class="tab-title">日志设置</h2>
+                    <!-- 日志设置表单 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加/编辑域名模态框 -->
+    <div class="modal" id="domain-modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2 id="domain-modal-title">添加域名</h2>
+                <button class="close-btn"><i class="bi bi-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="domain-form">
+                    <input type="hidden" id="domain-index" value="">
+                    
+                    <div class="form-group">
+                        <label for="domain-name" class="form-label">域名</label>
+                        <input type="text" id="domain-name" class="form-control" placeholder="@example.com" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email-forward" class="form-label">转发邮箱</label>
+                        <input type="email" id="email-forward" class="form-control" placeholder="your-email@gmail.com" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="zone-id" class="form-label">Zone ID</label>
+                        <input type="text" id="zone-id" class="form-control" placeholder="Cloudflare Zone ID" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="api-token" class="form-label">API Token</label>
+                        <input type="text" id="api-token" class="form-control" placeholder="Cloudflare API Token" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary cancel-btn">取消</button>
+                <button class="btn btn-primary save-domain-btn">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 删除确认模态框 -->
+    <div class="modal" id="delete-modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>确认删除</h2>
+                <button class="close-btn"><i class="bi bi-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除此域名吗？此操作无法撤销，并且会删除所有与此域名相关的邮件路由规则。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary cancel-btn">取消</button>
+                <button class="btn btn-danger confirm-delete-btn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<style>
+    .admin-container {
+        padding: 2rem 0;
+    }
+    
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .admin-tabs {
+        overflow: hidden;
+    }
+    
+    .tab-header {
+        display: flex;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 1.5rem;
+    }
+    
+    .tab-btn {
+        background: none;
+        border: none;
+        padding: 1rem 1.5rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        position: relative;
+    }
+    
+    .tab-btn:hover {
+        color: white;
+    }
+    
+    .tab-btn.active {
+        color: white;
+    }
+    
+    .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    }
+    
+    .tab-content {
+        padding: 0 1rem 1rem;
+    }
+    
+    .tab-pane {
+        display: none;
+    }
+    
+    .tab-pane.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .tab-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        color: white;
+    }
+    
+    .domains-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .domains-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .domain-card {
+        flex: 1 0 30%;
+        min-width: 300px;
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        transition: var(--transition);
+    }
+    
+    .domain-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .domain-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+        color: white;
+    }
+    
+    .domain-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .domain-content {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .domain-info p {
+        margin: 0.5rem 0;
+        font-size: 0.9rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: rgba(255, 255, 255, 0.6);
+    }
+    
+    .empty-state .btn {
+        margin-top: 1rem;
+    }
+    
+    @media (max-width: 992px) {
+        .domain-card {
+            flex: 1 0 45%;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .domains-list {
+            flex-direction: row;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+            flex-wrap: nowrap;
+        }
+        
+        .domain-card {
+            flex: 0 0 300px;
+            min-width: 300px;
+        }
+        
+        .tab-header {
+            overflow-x: auto;
+        }
+    }
+</style>
+
+<%- contentFor('script') %>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 标签切换功能
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabPanes = document.querySelectorAll('.tab-pane');
+        
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                
+                // 移除所有活动状态
+                tabBtns.forEach(btn => btn.classList.remove('active'));
+                tabPanes.forEach(pane => pane.classList.remove('active'));
+                
+                // 设置当前标签为活动状态
+                this.classList.add('active');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+            });
+        });
+        
+        // 模态框功能
+        const domainModal = document.getElementById('domain-modal');
+        const deleteModal = document.getElementById('delete-modal');
+        const addDomainBtns = document.querySelectorAll('.add-domain-btn');
+        const editDomainBtns = document.querySelectorAll('.edit-domain-btn');
+        const deleteDomainBtns = document.querySelectorAll('.delete-domain-btn');
+        const closeBtns = document.querySelectorAll('.close-btn');
+        const cancelBtns = document.querySelectorAll('.cancel-btn');
+        
+        // 打开添加域名模态框
+        addDomainBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('domain-modal-title').textContent = '添加域名';
+                document.getElementById('domain-index').value = '';
+                document.getElementById('domain-form').reset();
+                domainModal.classList.add('show');
+            });
+        });
+        
+        // 打开编辑域名模态框
+        editDomainBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const domainCard = this.closest('.domain-card');
+                const index = domainCard.getAttribute('data-index');
+                
+                document.getElementById('domain-modal-title').textContent = '编辑域名';
+                document.getElementById('domain-index').value = index;
+                
+                // 这里应该填充表单数据
+                // 实际应用中需要从服务器获取完整数据
+                
+                domainModal.classList.add('show');
+            });
+        });
+        
+        // 打开删除确认模态框
+        deleteDomainBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const domainCard = this.closest('.domain-card');
+                const index = domainCard.getAttribute('data-index');
+                
+                // 存储要删除的索引
+                deleteModal.setAttribute('data-index', index);
+                deleteModal.classList.add('show');
+            });
+        });
+        
+        // 关闭模态框
+        function closeModals() {
+            domainModal.classList.remove('show');
+            deleteModal.classList.remove('show');
+        }
+        
+        closeBtns.forEach(btn => btn.addEventListener('click', closeModals));
+        cancelBtns.forEach(btn => btn.addEventListener('click', closeModals));
+        
+        // 保存域名
+        document.querySelector('.save-domain-btn').addEventListener('click', function() {
+            // 这里应该添加保存域名的逻辑
+            // 实际应用中需要发送请求到服务器
+            
+            closeModals();
+        });
+        
+        // 确认删除域名
+        document.querySelector('.confirm-delete-btn').addEventListener('click', function() {
+            const index = deleteModal.getAttribute('data-index');
+            
+            // 这里应该添加删除域名的逻辑
+            // 实际应用中需要发送请求到服务器
+            
+            closeModals();
+        });
+    });
+</script>

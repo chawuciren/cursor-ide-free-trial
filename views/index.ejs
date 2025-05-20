@@ -1,771 +1,98 @@
-<!DOCTYPE html>
-<html lang="en" class="h-100">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= title %></title>
-    <link href="/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body class="dark-theme h-100">
-    <div class="container-fluid vh-100 p-0">
-        <div class="row h-100 g-0">
-            <!-- 左侧面板 -->
-            <div class="col-md-8 left-panel">
-                <ul class="nav nav-tabs" id="mainTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="user-info-tab" data-bs-toggle="tab" data-bs-target="#user-info" type="button" role="tab">😄用户信息</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab">⭐一键换号</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="accounts-tab" data-bs-toggle="tab" data-bs-target="#accounts" type="button" role="tab">📄账号列表</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="debug-tab" data-bs-toggle="tab" data-bs-target="#debug" type="button" role="tab">🔧工具</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">⚙️设置</button>
-                    </li>
-                </ul>
+<%- contentFor('body') %>
+<div class="dashboard-container">
+    <div class="dashboard-header fade-in">
+        <h1 class="dashboard-title">欢迎回来，<span class="highlight"><%= username %></span></h1>
+        <p class="dashboard-subtitle">CloudflareMailServer 企业邮箱管理平台</p>
+    </div>
 
-                <div class="tab-content" id="mainTabContent">
-                    <!-- 用户信息 -->
-                    <div class="tab-pane fade show active" id="user-info" role="tabpanel">
-                        <!-- 内容将由 JavaScript 动态生成 -->
+    <div class="dashboard-content">
+        <% if (locals.error) { %>
+            <div class="alert alert-danger fade-in" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i> <%= error %>
+            </div>
+        <% } %>
+        <div class="dashboard-main">
+            <div class="dashboard-stats">
+                <div class="stat-card glass-card fade-in">
+                    <div class="stat-icon">
+                        <i class="bi bi-envelope"></i>
                     </div>
-
-                    <!-- 全部流程 -->
-                    <div class="tab-pane fade" id="all" role="tabpanel">
-                        <div class="form-container">
-                            <h3>一键换号</h3>
-                            <div class="alert alert-dark bg-dark-subtle border-dark text-light" role="alert" style="background-color: #1a1a1a !important; border-color: #404040;">
-                                <i class="bi bi-info-circle me-2"></i>
-                                一键完成账号绑定、账号注册、账号登录、IDE账号切换、机器码重置全部流程。
-                            </div>
-
-                            <div class="mb-3">
-                                <button class="btn btn-primary" id="startCompleteFlowBtn">开始换号</button>
-                                <div class="mt-2">
-                                    <small id="completeFlowStatus" class="text-muted">等待开始...</small>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">邮箱账号</h3>
+                        <p class="stat-value"><%= accountsCount %></p>
                     </div>
-
-                    <!-- 账号列表 -->
-                    <div class="tab-pane fade" id="accounts" role="tabpanel">
-                        <div class="form-container">
-                            <h3>账号列表</h3>
-                            <div class="alert alert-dark bg-dark-subtle border-dark text-light" role="alert" style="background-color: #1a1a1a !important; border-color: #404040;">
-                                <i class="bi bi-info-circle me-2"></i>
-                                历史账号列表，可以管理或删除账号，账号删除时会同步删除Cloudflare邮箱。
-                            </div>
-                            <div class="mb-3">
-                                <button class="btn btn-secondary" id="refreshAccounts">刷新列表</button>
-                                <button class="btn btn-primary" id="addManualAccount">手动登记账号</button>
-                                <button class="btn btn-info" id="exportAccounts">导出账号</button>
-                                <button class="btn btn-warning" id="importAccounts">导入账号</button>
-                                <button class="btn btn-success" id="quickGenerateAccount">生成/绑定账号</button>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>邮箱</th>
-                                            <th>密码</th>
-                                            <th>状态</th>
-                                            <th>创建时间</th>
-                                            <th>操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="accountsTableBody">
-                                        <!-- 账号列表将通过JavaScript动态填充 -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <div class="stat-footer">
+                        <a href="/accounts" class="stat-link">管理 <i class="bi bi-arrow-right"></i></a>
                     </div>
+                </div>
 
-                    <!-- 编辑账号模态框 -->
-                    <div class="modal fade" id="editAccountModal" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content" style="background-color: #1a1a1a; border-color: #404040;">
-                                <div class="modal-header border-secondary" style="border-color: #404040;">
-                                    <h5 class="modal-title text-light">编辑账号</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <form id="editAccountForm">
-                                        <input type="hidden" id="editAccountOriginalEmail">
-                                        <div class="mb-3">
-                                            <label for="editAccountUsername" class="form-label text-light">用户名</label>
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="editAccountUsername" required style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editAccountEmail" class="form-label text-light">邮箱地址</label>
-                                            <input type="email" class="form-control bg-dark text-light border-secondary" id="editAccountEmail" required style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editAccountPassword" class="form-label text-light">密码</label>
-                                            <input type="password" class="form-control bg-dark text-light border-secondary" id="editAccountPassword" style="background-color: #2a2a2a; border-color: #404040;">
-                                            <div class="form-text text-muted">留空表示不修改密码</div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editAccountFirstName" class="form-label text-light">名字</label>
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="editAccountFirstName" style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editAccountLastName" class="form-label text-light">姓氏</label>
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="editAccountLastName" style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editAccountStatus" class="form-label text-light">账号状态</label>
-                                            <select class="form-select bg-dark text-light border-secondary" id="editAccountStatus" style="background-color: #2a2a2a; border-color: #404040;">
-                                                <option value="CREATED">CREATED - 已创建</option>
-                                                <option value="CODE_RECEIVED">CODE_RECEIVED - 已收到验证码</option>
-                                                <option value="VERIFIED">VERIFIED - 已验证</option>
-                                                <option value="FAILED">FAILED - 注册失败</option>
-                                                <option value="DISABLED">DISABLED - 已禁用</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editAccountRegistrationType" class="form-label text-light">注册类型</label>
-                                            <select class="form-select bg-dark text-light border-secondary" id="editAccountRegistrationType" style="background-color: #2a2a2a; border-color: #404040;">
-                                                <option value="cursor">Cursor</option>
-                                                <option value="copilot">Copilot</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editAccountVerificationCode" class="form-label text-light">验证码</label>
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="editAccountVerificationCode" style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editAccountCookie" class="form-label text-light">Cookie</label>
-                                            <textarea class="form-control bg-dark text-light border-secondary" id="editAccountCookie" style="background-color: #2a2a2a; border-color: #404040;" rows="3"></textarea>
-                                        </div>
-                                    </form>
-                                </div>
-                                <div class="modal-footer border-secondary" style="border-color: #404040;">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                    <button type="button" class="btn btn-primary" id="saveEditAccount">保存</button>
-                                </div>
-                            </div>
-                        </div>
+                <div class="stat-card glass-card fade-in">
+                    <div class="stat-icon">
+                        <i class="bi bi-inbox"></i>
                     </div>
-
-                    <!-- 手动添加账号模态框 -->
-                    <div class="modal fade" id="addManualAccountModal" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content" style="background-color: #1a1a1a; border-color: #404040;">
-                                <div class="modal-header border-secondary" style="border-color: #404040;">
-                                    <h5 class="modal-title text-light">手动登记账号</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <form id="addManualAccountForm">
-                                        <div class="mb-3">
-                                            <label for="manualAccountUsername" class="form-label text-light">用户名</label>
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="manualAccountUsername" required style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="manualAccountEmail" class="form-label text-light">邮箱地址</label>
-                                            <input type="email" class="form-control bg-dark text-light border-secondary" id="manualAccountEmail" required style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="manualAccountPassword" class="form-label text-light">密码</label>
-                                            <input type="password" class="form-control bg-dark text-light border-secondary" id="manualAccountPassword" required style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="manualAccountFirstName" class="form-label text-light">名字</label>
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="manualAccountFirstName" style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="manualAccountLastName" class="form-label text-light">姓氏</label>
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="manualAccountLastName" style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="manualAccountStatus" class="form-label text-light">账号状态</label>
-                                            <select class="form-select bg-dark text-light border-secondary" id="manualAccountStatus" style="background-color: #2a2a2a; border-color: #404040;">
-                                                <option value="CREATED">CREATED - 已创建</option>
-                                                <option value="CODE_RECEIVED">CODE_RECEIVED - 已收到验证码</option>
-                                                <option value="VERIFIED">VERIFIED - 已验证</option>
-                                                <option value="FAILED">FAILED - 注册失败</option>
-                                                <option value="DISABLED">DISABLED - 已禁用</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="manualAccountRegistrationType" class="form-label text-light">注册类型</label>
-                                            <select class="form-select bg-dark text-light border-secondary" id="manualAccountRegistrationType" style="background-color: #2a2a2a; border-color: #404040;">
-                                                <option value="cursor">Cursor</option>
-                                                <option value="copilot">Copilot</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="manualAccountVerificationCode" class="form-label text-light">验证码</label>
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="manualAccountVerificationCode" style="background-color: #2a2a2a; border-color: #404040;">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="manualAccountCookie" class="form-label text-light">Cookie</label>
-                                            <textarea class="form-control bg-dark text-light border-secondary" id="manualAccountCookie" style="background-color: #2a2a2a; border-color: #404040;" rows="3"></textarea>
-                                        </div>
-                                    </form>
-                                </div>
-                                <div class="modal-footer border-secondary" style="border-color: #404040;">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                    <button type="button" class="btn btn-primary" id="saveManualAccount">保存</button>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">未读邮件</h3>
+                        <p class="stat-value"><%= unreadCount %></p>
                     </div>
-
-                    <!-- 导入账号模态框 -->
-                    <div class="modal fade" id="importAccountsModal" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content" style="background-color: #1a1a1a; border-color: #404040;">
-                                <div class="modal-header border-secondary" style="border-color: #404040;">
-                                    <h5 class="modal-title text-light">导入账号</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="alert alert-dark bg-dark-subtle border-dark text-light" role="alert" style="background-color: #1a1a1a !important; border-color: #404040;">
-                                        <i class="bi bi-info-circle me-2"></i>
-                                        请选择要导入的CSV文件
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="importFile" class="form-label text-light">选择CSV文件</label>
-                                        <div class="input-group">
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="importFile" readonly style="background-color: #2a2a2a; border-color: #404040;">
-                                            <button class="btn btn-outline-secondary" type="button" id="selectImportFileBtn">选择文件</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="modal-footer border-secondary" style="border-color: #404040;">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                    <button type="button" class="btn btn-primary" id="confirmImportBtn">开始导入</button>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="stat-footer">
+                        <a href="/mail" class="stat-link">查看 <i class="bi bi-arrow-right"></i></a>
                     </div>
+                </div>
 
-                    <!-- 导出账号模态框 -->
-                    <div class="modal fade" id="exportAccountsModal" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content" style="background-color: #1a1a1a; border-color: #404040;">
-                                <div class="modal-header border-secondary" style="border-color: #404040;">
-                                    <h5 class="modal-title text-light">导出账号</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="alert alert-dark bg-dark-subtle border-dark text-light" role="alert" style="background-color: #1a1a1a !important; border-color: #404040;">
-                                        <i class="bi bi-info-circle me-2"></i>
-                                        请选择导出CSV文件的保存位置
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="exportFile" class="form-label text-light">保存位置</label>
-                                        <div class="input-group">
-                                            <input type="text" class="form-control bg-dark text-light border-secondary" id="exportFile" readonly style="background-color: #2a2a2a; border-color: #404040;">
-                                            <button class="btn btn-outline-secondary" type="button" id="selectExportFileBtn">选择位置</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="modal-footer border-secondary" style="border-color: #404040;">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                    <button type="button" class="btn btn-primary" id="confirmExportBtn">开始导出</button>
-                                </div>
-                            </div>
-                        </div>
+                <div class="stat-card glass-card fade-in">
+                    <div class="stat-icon">
+                        <i class="bi bi-cloud"></i>
                     </div>
-
-                    <!-- 调试 -->
-                    <div class="tab-pane fade" id="debug" role="tabpanel">
-                        <div class="form-container">
-                            <h3>调试工具</h3>
-                            <div class="alert alert-dark bg-dark-subtle border-dark text-light" role="alert" style="background-color: #1a1a1a !important; border-color: #404040;">
-                                <i class="bi bi-info-circle me-2"></i>
-                                常用的调试工具，如重置机器码、启动调试浏览器等。
-                            </div>
-                            <div class="debug-form-wrapper" style="max-height: calc(100vh - 250px); overflow-y: auto; padding-right: 10px;">
-                                <div class="mb-3">
-                                    <button class="btn btn-warning" id="resetMachineCodeBtn">重置机器码</button>
-                                    <div class="mt-2">
-                                        <small id="resetStatus" class="text-muted">等待操作...</small>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <button class="btn btn-warning" id="disableAutoUpdateBtn">禁用自动更新</button>
-                                    <div class="mt-2">
-                                        <small id="disableAutoUpdateStatus" class="text-muted">等待操作...</small>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <button class="btn btn-primary" id="openDebugBrowserBtn">启动调试浏览器</button>
-                                    <div class="mt-2">
-                                        <small id="debugBrowserStatus" class="text-muted">等待操作...</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">域名</h3>
+                        <p class="stat-value"><%= domainsCount %></p>
                     </div>
-
-                    <!-- 设置 -->
-                    <div class="tab-pane fade" id="settings" role="tabpanel">
-                        <div class="form-container">
-                            <h3>设置</h3>
-                            <div class="alert alert-dark bg-dark-subtle border-dark text-light" role="alert" style="background-color: #1a1a1a !important; border-color: #404040;">
-                                <i class="bi bi-info-circle me-2"></i>
-                                配置代理、Cloudflare、邮箱、日志、注册、浏览器等设置。
-                            </div>
-
-                            <div class="card mb-4">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0">设置</h5>
-                                    <div>
-                                        <button type="button" class="btn btn-outline-primary btn-sm me-2" id="exportConfigBtn">
-                                            <i class="bi bi-download"></i> 导出设置
-                                        </button>
-                                        <button type="button" class="btn btn-outline-primary btn-sm me-2" id="importConfigBtn">
-                                            <i class="bi bi-upload"></i> 导入设置
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="resetSettings">
-                                            <i class="bi bi-arrow-counterclockwise"></i> 重置
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <form id="settingsForm" class="settings-form">
-                                        <!-- 版本信息 -->
-                                        <div class="card mb-3">
-                                            <div class="card-header">版本信息</div>
-                                            <div class="card-body">
-                                                <div class="row">
-                                                    <div class="col-md-4">
-                                                        <strong>应用名称：</strong>
-                                                        <span id="appName">-</span>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <strong>版本号：</strong>
-                                                        <span id="appVersion">-</span>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <strong>许可证：</strong>
-                                                        <span id="appLicense">-</span>
-                                                    </div>
-                                                </div>
-                                                <div class="row mt-2">
-                                                    <div class="col-md-4">
-                                                        <strong>作者：</strong>
-                                                        <span id="appAuthor">-</span>
-                                                    </div>
-                                                    <div class="col-md-8">
-                                                        <strong>描述：</strong>
-                                                        <span id="appDescription">-</span>
-                                                    </div>
-                                                </div>
-                                                <div class="row mt-2">
-                                                    <div class="col-12">
-                                                        <strong>关键词：</strong>
-                                                        <span id="appKeywords">-</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- 代理设置 -->
-                                        <div class="card mb-3">
-                                            <div class="card-header">代理设置</div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="proxyEnabled" name="proxy.enabled">
-                                                        <label class="form-check-label" for="proxyEnabled">启用代理</label>
-                                                        <div class="form-text text-muted">开启后将通过代理服务器访问网络，可以避免IP限制</div>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="proxyHost" class="form-label">代理主机</label>
-                                                    <input type="text" class="form-control" id="proxyHost" name="proxy.host">
-                                                    <div class="form-text text-muted">代理服务器的IP地址或域名</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="proxyPort" class="form-label">代理端口</label>
-                                                    <input type="number" class="form-control" id="proxyPort" name="proxy.port">
-                                                    <div class="form-text text-muted">代理服务器的端口号</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="proxyProtocol" class="form-label">代理协议</label>
-                                                    <select class="form-select" id="proxyProtocol" name="proxy.protocol">
-                                                        <option value="socks5">SOCKS5</option>
-                                                        <option value="http">HTTP</option>
-                                                        <option value="https">HTTPS</option>
-                                                    </select>
-                                                    <div class="form-text text-muted">代理服务器支持的协议类型，建议使用SOCKS5</div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- 邮箱设置 -->
-                                        <div class="card mb-3">
-                                            <div class="card-header">邮箱设置</div>
-                                            <div class="card-body">
-                                                <div class="mb-3" id="emailProxySettings">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="emailProxy" name="email.proxy">
-                                                        <label class="form-check-label" for="emailProxy">启用代理</label>
-                                                        <div class="form-text text-muted">是否对邮件服务请求使用代理</div>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="emailType" class="form-label">邮箱类型</label>
-                                                    <select class="form-select" id="emailType" name="email.type">
-                                                        <option value="publicApi">公共API池</option>
-                                                        <option value="imap">IMAP</option>
-                                                        <option value="tempmail">TempMail</option>
-                                                    </select>
-                                                    <div class="form-text text-muted">选择邮箱服务类型，IMAP用于永久邮箱，TempMail用于一次性使用，公共API池用于共享邮箱服务</div>
-                                                </div>
-                                                
-                                                <!-- 公共API池设置 -->
-                                                <div id="publicApiSettings">
-                                                    <div class="mb-3">
-                                                        <label for="publicApiEndpoint" class="form-label">API端点</label>
-                                                        <input type="text" class="form-control" id="publicApiEndpoint" name="email.publicApi.apiEndpoint">
-                                                        <div class="form-text text-muted">公共API池服务的接口地址</div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- IMAP和TempMail通用设置 -->
-                                                <div id="commonEmailSettings">
-                                                    <div class="mb-3">
-                                                        <label for="emailUser" class="form-label">邮箱账号</label>
-                                                        <input type="email" class="form-control" id="emailUser" name="email.user">
-                                                        <div class="form-text text-muted">用于接收验证码的邮箱账号</div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="emailPass" class="form-label">邮箱密码</label>
-                                                        <input type="password" class="form-control" id="emailPass" name="email.pass">
-                                                        <div class="form-text text-muted">邮箱的密码或应用专用密码</div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- 临时邮箱设置 -->
-                                                <div id="tempmailSettings">
-                                                    <div class="mb-3">
-                                                        <label for="tempmailDomain" class="form-label">首选域名</label>
-                                                        <input type="text" class="form-control" id="tempmailDomain" name="email.tempmail.preferredDomain">
-                                                        <div class="form-text text-muted">临时邮箱服务提供的域名，建议使用默认值</div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="customizeUsername" name="email.tempmail.customizeUsername">
-                                                            <label class="form-check-label" for="customizeUsername">自定义用户名</label>
-                                                            <div class="form-text text-muted">是否使用自定义的邮箱用户名，否则将随机生成</div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="tempmailUsername" class="form-label">用户名</label>
-                                                        <input type="text" class="form-control" id="tempmailUsername" name="email.tempmail.username">
-                                                        <div class="form-text text-muted">自定义的临时邮箱用户名前缀</div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="tempmailPin" class="form-label">PIN码</label>
-                                                        <input type="text" class="form-control" id="tempmailPin" name="email.tempmail.pin">
-                                                        <div class="form-text text-muted">临时邮箱的安全PIN码，用于恢复邮箱访问</div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="tempmailLifetime" class="form-label">有效期</label>
-                                                        <select class="form-select" id="tempmailLifetime" name="email.tempmail.lifetime">
-                                                            <option value="10min">10分钟</option>
-                                                            <option value="60min">60分钟</option>
-                                                            <option value="2days">2天</option>
-                                                            <option value="7days">7天</option>
-                                                        </select>
-                                                        <div class="form-text text-muted">临时邮箱的有效使用期限，过期后将被删除</div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- SMTP设置 -->
-                                                <div class="mb-3" id="smtpSettingsEnabled">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="smtpEnabled" name="email.smtp.enabled">
-                                                        <label class="form-check-label" for="smtpEnabled">启用SMTP</label>
-                                                        <div class="form-text text-muted">是否启用SMTP发信功能，用于发送测试邮件</div>
-                                                    </div>
-                                                </div>
-                                                <div id="smtpSettings">
-                                                    <div class="mb-3">
-                                                        <label for="smtpHost" class="form-label">SMTP主机</label>
-                                                        <input type="text" class="form-control" id="smtpHost" name="email.smtp.host">
-                                                        <div class="form-text text-muted">SMTP服务器地址，如smtp.gmail.com</div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="smtpPort" class="form-label">SMTP端口</label>
-                                                        <input type="number" class="form-control" id="smtpPort" name="email.smtp.port">
-                                                        <div class="form-text text-muted">SMTP服务器端口，通常是465(SSL)或587(TLS)</div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="smtpSecure" name="email.smtp.secure">
-                                                            <label class="form-check-label" for="smtpSecure">启用SSL/TLS</label>
-                                                            <div class="form-text text-muted">是否使用SSL/TLS加密连接，建议启用</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- IMAP设置 -->
-                                                <div class="mb-3" id="imapSettingsEnabled">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="imapEnabled" name="email.imap.enabled">
-                                                        <label class="form-check-label" for="imapEnabled">启用IMAP</label>
-                                                        <div class="form-text text-muted">是否启用IMAP收信功能，用于接收验证码</div>
-                                                    </div>
-                                                </div>
-                                                <div id="imapSettings">
-                                                    <div class="mb-3">
-                                                        <label for="imapHost" class="form-label">IMAP主机</label>
-                                                        <input type="text" class="form-control" id="imapHost" name="email.imap.host">
-                                                        <div class="form-text text-muted">IMAP服务器地址，如imap.gmail.com</div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="imapPort" class="form-label">IMAP端口</label>
-                                                        <input type="number" class="form-control" id="imapPort" name="email.imap.port">
-                                                        <div class="form-text text-muted">IMAP服务器端口，通常是993(SSL)</div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="imapSecure" name="email.imap.secure">
-                                                            <label class="form-check-label" for="imapSecure">启用SSL/TLS</label>
-                                                            <div class="form-text text-muted">是否使用SSL/TLS加密连接，建议启用</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Cloudflare设置 -->
-                                        <div class="card mb-3" id="cloudflareSettings">
-                                            <div class="card-header">Cloudflare设置</div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="cloudflareProxy" name="cloudflare.proxy">
-                                                        <label class="form-check-label" for="cloudflareProxy">启用代理</label>
-                                                        <div class="form-text text-muted">是否对 Cloudflare API 请求使用代理</div>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="cloudflareApiToken" class="form-label">API Token</label>
-                                                    <input type="password" class="form-control" id="cloudflareApiToken" name="cloudflare.apiToken">
-                                                    <div class="form-text text-muted">Cloudflare API令牌，用于管理邮件转发规则</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="cloudflareZoneId" class="form-label">Zone ID</label>
-                                                    <input type="text" class="form-control" id="cloudflareZoneId" name="cloudflare.zoneId">
-                                                    <div class="form-text text-muted">Cloudflare域名的Zone ID，可在域名概述页面找到</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="cloudflareEmailForward" class="form-label">转发邮箱</label>
-                                                    <input type="email" class="form-control" id="cloudflareEmailForward" name="cloudflare.emailForward">
-                                                    <div class="form-text text-muted">接收所有邮件转发的目标邮箱地址</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="cloudflareVirtualDomain" class="form-label">虚拟域名</label>
-                                                    <input type="text" class="form-control" id="cloudflareVirtualDomain" name="cloudflare.virtualDomain">
-                                                    <div class="form-text text-muted">用于生成临时邮箱的域名后缀，如@example.com</div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- 日志设置 -->
-                                        <div class="card mb-3">
-                                            <div class="card-header">日志设置</div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <label for="loggingLevel" class="form-label">日志级别</label>
-                                                    <select class="form-select" id="loggingLevel" name="logging.level">
-                                                        <option value="error">Error</option>
-                                                        <option value="warn">Warning</option>
-                                                        <option value="info">Info</option>
-                                                        <option value="debug">Debug</option>
-                                                    </select>
-                                                    <div class="form-text text-muted">日志记录的详细程度，debug级别包含最详细的信息</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="loggingPath" class="form-label">日志路径</label>
-                                                    <input type="text" class="form-control" id="loggingPath" name="logging.path">
-                                                    <div class="form-text text-muted">日志文件存储的目录路径</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="loggingMaxSize" class="form-label">单文件大小上限</label>
-                                                    <input type="text" class="form-control" id="loggingMaxSize" name="logging.maxSize">
-                                                    <div class="form-text text-muted">单个日志文件的最大大小，如10m表示10兆字节</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="loggingMaxFiles" class="form-label">最大文件数</label>
-                                                    <input type="number" class="form-control" id="loggingMaxFiles" name="logging.maxFiles">
-                                                    <div class="form-text text-muted">保留的历史日志文件数量，超过后会删除最旧的文件</div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- 注册设置 -->
-                                        <div class="card mb-3">
-                                            <div class="card-header">注册设置</div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <label for="registrationType" class="form-label">注册类型</label>
-                                                    <select class="form-select" id="registrationType" name="registration.type">
-                                                        <option value="cursor">Cursor</option>
-                                                        <option value="copilot">Copilot</option>
-                                                    </select>
-                                                    <div class="form-text text-muted">选择要注册的AI助手类型</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="registrationManual" name="registration.manual">
-                                                        <label class="form-check-label" for="registrationManual">手动注册模式</label>
-                                                        <div class="form-text text-muted">开启后需要手动完成部分注册步骤，可以提高注册成功率</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- 浏览器设置 -->
-                                        <div class="card mb-3">
-                                            <div class="card-header">浏览器设置</div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="browserProxy" name="browser.proxy">
-                                                        <label class="form-check-label" for="browserProxy">启用代理</label>
-                                                        <div class="form-text text-muted">是否对浏览器请求使用代理</div>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="browserHeadless" name="browser.headless">
-                                                        <label class="form-check-label" for="browserHeadless">无头模式</label>
-                                                        <div class="form-text text-muted">启用后浏览器将在后台运行，不显示界面，可以提高运行速度</div>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="browserCheckFingerprint" name="browser.checkFingerprint">
-                                                        <label class="form-check-label" for="browserCheckFingerprint">检查浏览器指纹</label>
-                                                        <div class="form-text text-muted">启用后会在浏览器启动时检查指纹，确保不被识别为自动化工具</div>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="browserFingerprintRandom" name="browser.fingerprintRandom">
-                                                        <label class="form-check-label" for="browserFingerprintRandom">开启指纹</label>
-                                                        <div class="form-text text-muted">启用后会在每次启动浏览器时注入指纹值，提高反检测能力</div>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="browserFingerprintSeed" class="form-label">指纹种子</label>
-                                                    <div class="input-group">
-                                                        <input type="text" class="form-control" id="browserFingerprintSeed" name="browser.fingerprintSeed" placeholder="请输入或随机生成指纹种子">
-                                                        <button class="btn btn-outline-secondary" type="button" id="randomFingerprintSeedBtn">随机</button>
-                                                        <button class="btn btn-outline-secondary" type="button" id="alwaysRandomFingerprintBtn">每次随机</button>
-                                                    </div>
-                                                    <div class="form-text text-muted">浏览器指纹的固定种子值，需要先开启指纹，留空或设为0则每次启动时随机生成</div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="browserExecutablePath" class="form-label">Chrome可执行文件路径</label>
-                                                    <div class="input-group">
-                                                        <input type="text" class="form-control" id="browserExecutablePath" name="browser.executablePath" placeholder="请选择或输入Chrome可执行文件路径">
-                                                        <button class="btn btn-outline-secondary" type="button" id="selectChromePathBtn">选择</button>
-                                                        <button class="btn btn-outline-secondary" type="button" id="resetChromePathBtn">恢复默认</button>
-                                                    </div>
-                                                    <div class="form-text text-muted">Chrome浏览器的可执行文件路径，留空则使用系统默认Chrome</div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Cursor设置 -->
-                                        <div class="card mb-3">
-                                            <div class="card-header">Cursor设置</div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <label for="cursorExecutablePath" class="form-label">Cursor可执行文件路径</label>
-                                                    <div class="input-group">
-                                                        <input type="text" class="form-control" id="cursorExecutablePath" name="cursor.executablePath" placeholder="请选择或输入Cursor可执行文件路径">
-                                                        <button class="btn btn-outline-secondary" type="button" id="selectCursorPathBtn">选择</button>
-                                                        <button class="btn btn-outline-secondary" type="button" id="resetCursorPathBtn">恢复默认</button>
-                                                    </div>
-                                                    <div class="form-text text-muted">Cursor IDE的可执行文件路径，留空则使用系统默认路径</div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-12">
-                                                <button type="submit" class="btn btn-primary w-100">保存设置</button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="stat-footer">
+                        <span class="stat-info">配置文件</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 右侧控制台 -->
-            <div class="col-md-4 right-panel">
-                <div class="console-header">
-                    <h3>执行日志</h3>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="clearConsole()">清除</button>
-                </div>
-                <div class="console" id="console">
-                    <div class="console-line">系统初始化完成...</div>
+            <div class="dashboard-actions fade-in">
+                <a href="/accounts/create" class="action-btn btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> 创建新账号
+                </a>
+                <a href="/mail/fetch" class="action-btn btn btn-secondary">
+                    <i class="bi bi-arrow-repeat"></i> 检查新邮件
+                </a>
+                <button id="clear-activities-btn" class="action-btn btn btn-danger">
+                    <i class="bi bi-trash"></i> 清空日志
+                </button>
+            </div>
+
+            <div class="recent-activity glass-card fade-in">
+                <h2 class="section-title">最近活动</h2>
+                <div class="activity-list">
+                    <% if (recentActivities && recentActivities.length > 0) { %>
+                        <% recentActivities.forEach(activity => { %>
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="bi bi-<%= activity.icon %>"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <p class="activity-text"><%= activity.text %></p>
+                                    <span class="activity-time"><%= activity.time %></span>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } else { %>
+                        <div class="empty-state">
+                            <p>暂无活动记录</p>
+                        </div>
+                    <% } %>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/http.js"></script>
-    <script src="/js/websocket.js"></script>
-    <script src="/js/main.js"></script>
-    <script src="/js/settings.js"></script>
-    <script src="/js/accounts.js"></script>
-    <script src="/js/debug.js"></script>
-    <script src="/js/complete-flow.js"></script>
-    <script src="/js/user-info.js"></script>
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
 
-    <!-- 导入设置模态框 -->
-    <div class="modal fade" id="importConfigModal" tabindex="-1" aria-labelledby="importConfigModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content" style="background-color: #1a1a1a; border-color: #404040;">
-                <div class="modal-header border-secondary" style="border-color: #404040;">
-                    <h5 class="modal-title text-light" id="importConfigModalLabel">导入设置</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-dark bg-dark-subtle border-dark text-light" role="alert" style="background-color: #1a1a1a !important; border-color: #404040;">
-                        <i class="bi bi-info-circle me-2"></i>
-                        请选择要导入的配置文件（YAML格式）
-                    </div>
-                    <div class="mb-3">
-                        <label for="configImportFile" class="form-label text-light">选择配置文件</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control bg-dark text-light border-secondary" id="configImportFile" readonly style="background-color: #2a2a2a; border-color: #404040;">
-                            <button class="btn btn-outline-secondary text-light" type="button" id="selectImportConfigFileBtn">
-                                <i class="bi bi-folder"></i> 选择文件
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-secondary" style="border-color: #404040;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="confirmImportConfigBtn">确认导入</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html> 
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->

@@ -1,0 +1,97 @@
+<%- contentFor('body') %>
+<div class="error-container fade-in">
+    <div class="error-card glass-card">
+        <div class="error-icon">
+            <% if (error.status === 404) { %>
+                <i class="bi bi-question-circle"></i>
+            <% } else { %>
+                <i class="bi bi-exclamation-triangle"></i>
+            <% } %>
+        </div>
+        <h1 class="error-title"><%= error.status || 500 %></h1>
+        <h2 class="error-subtitle"><%= message %></h2>
+        <% if (process.env.NODE_ENV === 'development' && error.stack) { %>
+            <div class="error-stack">
+                <pre><%= error.stack %></pre>
+            </div>
+        <% } %>
+        <div class="error-actions">
+            <a href="/" class="btn btn-primary">返回首页</a>
+            <button onclick="window.history.back()" class="btn btn-secondary">返回上一页</button>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<style>
+    .error-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 70vh;
+        padding: 2rem 0;
+    }
+    
+    .error-card {
+        text-align: center;
+        max-width: 600px;
+        width: 100%;
+        padding: 3rem 2rem;
+    }
+    
+    .error-icon {
+        font-size: 5rem;
+        margin-bottom: 1rem;
+        color: var(--danger-color);
+        animation: pulse 2s infinite;
+    }
+    
+    .error-title {
+        font-size: 4rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, var(--danger-color), var(--warning-color));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .error-subtitle {
+        font-size: 1.5rem;
+        font-weight: 500;
+        margin-bottom: 2rem;
+        color: var(--dark-color);
+    }
+    
+    .error-stack {
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        margin-bottom: 2rem;
+        text-align: left;
+        overflow-x: auto;
+    }
+    
+    .error-stack pre {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--dark-color);
+    }
+    
+    .error-actions {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
+    @media (max-width: 768px) {
+        .error-actions {
+            flex-direction: column;
+        }
+    }
+</style>

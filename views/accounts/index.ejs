@@ -1,0 +1,254 @@
+<%- contentFor('body') %>
+<div class="accounts-container">
+    <div class="accounts-header fade-in">
+        <h1 class="section-title">账号管理</h1>
+        <div class="header-actions">
+            <a href="/accounts/sync" class="btn btn-secondary">
+                <i class="bi bi-arrow-repeat"></i> 同步账号
+            </a>
+            <a href="/accounts/generate" class="btn btn-secondary">
+                <i class="bi bi-magic"></i> 自动生成
+            </a>
+            <a href="/accounts/create" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> 创建新账号
+            </a>
+        </div>
+    </div>
+
+    <div class="accounts-filters glass-card fade-in">
+        <form id="filter-form" action="/accounts" method="GET">
+            <div class="filter-group">
+                <label for="domain-filter" class="form-label">域名筛选</label>
+                <select id="domain-filter" name="domain" class="form-control">
+                    <option value="all" <%= filters.domain === 'all' ? 'selected' : '' %>>所有域名</option>
+                    <% domains.forEach(domain => { %>
+                        <option value="<%= domain %>" <%= filters.domain === domain ? 'selected' : '' %>><%= domain %></option>
+                    <% }); %>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="status-filter" class="form-label">状态筛选</label>
+                <select id="status-filter" name="status" class="form-control">
+                    <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>所有状态</option>
+                    <option value="active" <%= filters.status === 'active' ? 'selected' : '' %>>活跃</option>
+                    <option value="inactive" <%= filters.status === 'inactive' ? 'selected' : '' %>>未激活</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="search" class="form-label">搜索</label>
+                <input type="text" id="search" name="search" class="form-control" placeholder="搜索账号..." value="<%= filters.search %>">
+            </div>
+
+            <input type="hidden" name="page" id="page-input" value="<%= pagination.page %>">
+            <input type="hidden" name="pageSize" id="page-size-input" value="<%= pagination.pageSize %>">
+
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-filter"></i> 筛选
+                </button>
+                <a href="/accounts" class="btn btn-secondary">
+                    <i class="bi bi-arrow-counterclockwise"></i> 重置
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="accounts-container fade-in">
+        <% if (accounts && accounts.length > 0) { %>
+            <div class="accounts-grid">
+                <% accounts.forEach(account => { %>
+                    <div class="account-card glass-card" data-domain="<%= account.domain %>" data-status="<%= account.status %>" data-id="<%= account.id %>" data-email="<%= account.email %>" data-password="<%= account.password || '' %>">
+                        <div class="account-header">
+                            <div class="account-email-container">
+                                <h3 class="account-email" title="<%= account.email %>"><%= account.email %></h3>
+                            </div>
+                            <span class="status-badge status-<%= account.status %>">
+                                <%= account.status === 'active' ? '活跃' : '未激活' %>
+                            </span>
+                        </div>
+                        <div class="account-content">
+                            <div class="account-info">
+                                <p><strong>ID:</strong> <%= account.id %></p>
+                                <p><strong>用户名:</strong> <%= account.username %></p>
+                                <p><strong>域名:</strong> <%= account.domain %></p>
+                                <p><strong>创建日期:</strong> <%= account.created_at %></p>
+                                <p class="password-field">
+                                    <strong>密码:</strong>
+                                    <span class="password-value"><%= account.password ? '••••••••••••' : '未设置' %></span>
+                                </p>
+                                <% if (account.notes) { %>
+                                <p><strong>备注:</strong> <%= account.notes %></p>
+                                <% } %>
+                            </div>
+                        </div>
+                        <div class="account-footer">
+                            <div class="actions">
+                                <button class="action-btn copy-email-btn" title="复制邮箱">
+                                    <i class="bi bi-envelope"></i>
+                                </button>
+                                <button class="action-btn copy-password-btn" title="复制密码">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                <button class="action-btn reset-password-btn" title="重置密码">
+                                    <i class="bi bi-key"></i>
+                                </button>
+                                <a href="/mail?recipient=<%= encodeURIComponent(account.email) %>" class="action-btn view-mail-btn" title="查看邮件">
+                                    <i class="bi bi-envelope-open"></i>
+                                </a>
+                                <a href="/accounts/view/<%= account.id %>" class="action-btn view-btn" title="查看详情">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/accounts/edit/<%= account.id %>" class="action-btn edit-btn" title="编辑账号">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button class="action-btn delete-btn" title="删除账号">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } else { %>
+            <div class="empty-state glass-card">
+                <div class="empty-icon">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <p>暂无账号数据</p>
+                <a href="/accounts/create" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> 创建新账号
+                </a>
+            </div>
+        <% } %>
+    </div>
+
+    <% if (pagination.total > 0) { %>
+    <div class="pagination-container glass-card fade-in">
+        <div class="pagination-info">
+            显示 <%= (pagination.page - 1) * pagination.pageSize + 1 %> - <%= Math.min(pagination.page * pagination.pageSize, pagination.total) %> 条，共 <%= pagination.total %> 条
+        </div>
+        <div class="pagination">
+            <% if (pagination.page > 1) { %>
+                <a href="<%= pagination.baseUrl %>?page=1&pageSize=<%= pagination.pageSize %>&domain=<%= filters.domain %>&status=<%= filters.status %>&search=<%= filters.search %>" class="page-link" title="首页">
+                    <i class="bi bi-chevron-double-left"></i>
+                </a>
+                <a href="<%= pagination.baseUrl %>?page=<%= pagination.page - 1 %>&pageSize=<%= pagination.pageSize %>&domain=<%= filters.domain %>&status=<%= filters.status %>&search=<%= filters.search %>" class="page-link" title="上一页">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            <% } else { %>
+                <span class="page-link disabled" title="首页">
+                    <i class="bi bi-chevron-double-left"></i>
+                </span>
+                <span class="page-link disabled" title="上一页">
+                    <i class="bi bi-chevron-left"></i>
+                </span>
+            <% } %>
+
+            <%
+            let startPage = Math.max(1, pagination.page - 2);
+            let endPage = Math.min(pagination.pages, pagination.page + 2);
+
+            // 确保显示5个页码（如果有足够的页数）
+            if (endPage - startPage < 4 && pagination.pages > 4) {
+                if (startPage === 1) {
+                    endPage = Math.min(5, pagination.pages);
+                } else if (endPage === pagination.pages) {
+                    startPage = Math.max(1, pagination.pages - 4);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) { %>
+                <% if (i === pagination.page) { %>
+                    <span class="page-link active"><%= i %></span>
+                <% } else { %>
+                    <a href="<%= pagination.baseUrl %>?page=<%= i %>&pageSize=<%= pagination.pageSize %>&domain=<%= filters.domain %>&status=<%= filters.status %>&search=<%= filters.search %>" class="page-link"><%= i %></a>
+                <% } %>
+            <% } %>
+
+            <% if (pagination.page < pagination.pages) { %>
+                <a href="<%= pagination.baseUrl %>?page=<%= pagination.page + 1 %>&pageSize=<%= pagination.pageSize %>&domain=<%= filters.domain %>&status=<%= filters.status %>&search=<%= filters.search %>" class="page-link" title="下一页">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                <a href="<%= pagination.baseUrl %>?page=<%= pagination.pages %>&pageSize=<%= pagination.pageSize %>&domain=<%= filters.domain %>&status=<%= filters.status %>&search=<%= filters.search %>" class="page-link" title="末页">
+                    <i class="bi bi-chevron-double-right"></i>
+                </a>
+            <% } else { %>
+                <span class="page-link disabled" title="下一页">
+                    <i class="bi bi-chevron-right"></i>
+                </span>
+                <span class="page-link disabled" title="末页">
+                    <i class="bi bi-chevron-double-right"></i>
+                </span>
+            <% } %>
+        </div>
+        <div class="page-size-selector">
+            <label for="page-size-select">每页显示:</label>
+            <select id="page-size-select" class="form-control">
+                <option value="10" <%= pagination.pageSize === 10 ? 'selected' : '' %>>10</option>
+                <option value="20" <%= pagination.pageSize === 20 ? 'selected' : '' %>>20</option>
+                <option value="50" <%= pagination.pageSize === 50 ? 'selected' : '' %>>50</option>
+                <option value="100" <%= pagination.pageSize === 100 ? 'selected' : '' %>>100</option>
+            </select>
+        </div>
+    </div>
+    <% } %>
+
+    <!-- 删除确认模态框 -->
+    <div class="modal" id="delete-modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>确认删除</h2>
+                <button class="close-btn"><i class="bi bi-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除此账号吗？此操作无法撤销。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary cancel-btn">取消</button>
+                <button class="btn btn-danger confirm-delete-btn">删除</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- 重置密码模态框 -->
+    <div class="modal" id="reset-password-modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>重置密码</h2>
+                <button class="close-btn"><i class="bi bi-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要重置此账号的密码吗？</p>
+                <p>重置后将生成一个新的随机密码，旧密码将无法使用。</p>
+
+                <div id="reset-password-result" style="display: none;">
+                    <div class="password-result">
+                        <h4>新密码</h4>
+                        <div class="new-password-container">
+                            <input type="text" id="new-password" class="form-control" readonly>
+                            <button class="btn btn-sm btn-primary copy-new-password-btn">
+                                <i class="bi bi-clipboard"></i> 复制
+                            </button>
+                        </div>
+                        <p class="password-note">请保存此密码，它只会显示一次！</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary cancel-btn">取消</button>
+                <button class="btn btn-primary confirm-reset-btn">重置密码</button>
+                <button class="btn btn-primary done-btn" style="display: none;">完成</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
+
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->

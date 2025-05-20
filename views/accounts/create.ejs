@@ -1,0 +1,195 @@
+<%- contentFor('body') %>
+<div class="create-account-container">
+    <div class="page-header fade-in">
+        <h1 class="section-title">创建新账号</h1>
+        <a href="/accounts" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> 返回账号列表
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="create-account-form glass-card">
+                <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <%= error %>
+                </div>
+                <% } %>
+
+                <form action="/accounts/create" method="POST" novalidate>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="username" class="form-label">用户名</label>
+                            <div class="input-group username-group">
+                                <span class="input-icon"><i class="bi bi-person"></i></span>
+                                <input type="text" id="username" name="username" class="form-control"
+                                    placeholder="输入用户名或使用自动生成" required autocomplete="off"
+                                    pattern="[a-zA-Z0-9_-]+" title="用户名只能包含字母、数字、下划线和连字符">
+                                <button type="button" class="btn btn-outline-primary generate-username-btn" title="生成随机用户名" onclick="console.log('用户名按钮点击')">
+                                    <i class="bi bi-magic"></i> 生成
+                                </button>
+                            </div>
+                            <small class="form-text">用户名将作为邮箱地址的前缀部分</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="domain" class="form-label">域名</label>
+                            <div class="input-group">
+                                <span class="input-icon"><i class="bi bi-globe"></i></span>
+                                <select id="domain" name="domain" class="form-control" required>
+                                    <option value="">选择域名</option>
+                                    <% domains.forEach(domain => { %>
+                                        <option value="<%= domain.name %>"><%= domain.name %></option>
+                                    <% }); %>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">密码</label>
+                        <div class="input-group password-group">
+                            <span class="input-icon"><i class="bi bi-key"></i></span>
+                            <input type="password" id="password" name="password" class="form-control"
+                                placeholder="输入密码或使用自动生成" autocomplete="new-password">
+                            <button type="button" class="btn btn-outline-secondary toggle-password-btn" title="显示/隐藏密码" onclick="console.log('显示密码按钮点击')">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary generate-password-btn" title="生成随机密码" onclick="console.log('密码按钮点击')">
+                                <i class="bi bi-magic"></i> 生成
+                            </button>
+                        </div>
+                        <small class="form-text">留空将自动生成随机密码</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes" class="form-label">备注</label>
+                        <textarea id="notes" name="notes" class="form-control" rows="3"
+                            placeholder="添加备注信息（可选）"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">邮箱预览</label>
+                        <div class="email-preview">
+                            <i class="bi bi-envelope-at me-2"></i>
+                            <span id="email-preview-text">username@domain.com</span>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary create-btn">
+                            <i class="bi bi-plus-circle"></i> 创建账号
+                        </button>
+                        <button type="reset" class="btn btn-secondary">
+                            <i class="bi bi-arrow-counterclockwise"></i> 重置
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="create-account-info glass-card">
+                <h2 class="info-title"><i class="bi bi-info-circle"></i> 账号创建说明</h2>
+                <div class="info-content">
+                    <p>创建新账号将在Cloudflare中添加一个新的邮件转发规则，将发送到该邮箱的邮件转发到配置的目标邮箱。</p>
+                    <h3>注意事项：</h3>
+                    <ul>
+                        <li>用户名只能包含字母、数字、下划线和连字符</li>
+                        <li>用户名和密码都可以手动输入或使用自动生成按钮生成</li>
+                        <li>密码留空将自动生成随机密码</li>
+                        <li>创建后的邮箱地址将立即生效</li>
+                        <li>所有发送到该邮箱的邮件将被转发到系统配置的目标邮箱</li>
+                        <li>您可以随时在账号列表中删除不需要的邮箱</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
+
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->
+<script>
+    // 内联备用函数，以防外部JS文件加载失败
+    document.addEventListener('DOMContentLoaded', function() {
+        // 用户名生成按钮
+        const generateUsernameBtn = document.querySelector('.generate-username-btn');
+        if (generateUsernameBtn) {
+            generateUsernameBtn.addEventListener('click', function() {
+                console.log('内联用户名生成按钮被点击');
+                const usernameInput = document.getElementById('username');
+                if (usernameInput) {
+                    // 生成随机用户名
+                    const adjectives = ['swift', 'smart', 'cyber', 'digital', 'quantum', 'binary', 'crypto', 'tech', 'pixel', 'data'];
+                    const nouns = ['coder', 'dev', 'hacker', 'ninja', 'wizard', 'guru', 'master', 'pro', 'expert', 'ace'];
+
+                    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+                    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+                    const num = Math.floor(Math.random() * 9999);
+
+                    usernameInput.value = adj + noun + num;
+
+                    // 更新邮箱预览
+                    const domainSelect = document.getElementById('domain');
+                    const emailPreview = document.getElementById('email-preview-text');
+                    if (domainSelect && emailPreview) {
+                        emailPreview.textContent = usernameInput.value + domainSelect.value;
+                    }
+                }
+            });
+        }
+
+        // 密码生成按钮
+        const generatePasswordBtn = document.querySelector('.generate-password-btn');
+        if (generatePasswordBtn) {
+            generatePasswordBtn.addEventListener('click', function() {
+                console.log('内联密码生成按钮被点击');
+                const passwordInput = document.getElementById('password');
+                if (passwordInput) {
+                    // 生成随机密码
+                    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
+                    let password = '';
+                    for (let i = 0; i < 12; i++) {
+                        const randomIndex = Math.floor(Math.random() * charset.length);
+                        password += charset[randomIndex];
+                    }
+
+                    passwordInput.value = password;
+                    passwordInput.type = 'text';
+
+                    // 更新显示/隐藏按钮
+                    const togglePasswordBtn = document.querySelector('.toggle-password-btn');
+                    if (togglePasswordBtn) {
+                        togglePasswordBtn.innerHTML = '<i class="bi bi-eye-slash"></i>';
+                        togglePasswordBtn.setAttribute('title', '隐藏密码');
+                    }
+                }
+            });
+        }
+
+        // 显示/隐藏密码按钮
+        const togglePasswordBtn = document.querySelector('.toggle-password-btn');
+        if (togglePasswordBtn) {
+            togglePasswordBtn.addEventListener('click', function() {
+                console.log('内联显示/隐藏密码按钮被点击');
+                const passwordInput = document.getElementById('password');
+                if (passwordInput) {
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        this.innerHTML = '<i class="bi bi-eye-slash"></i>';
+                        this.setAttribute('title', '隐藏密码');
+                    } else {
+                        passwordInput.type = 'password';
+                        this.innerHTML = '<i class="bi bi-eye"></i>';
+                        this.setAttribute('title', '显示密码');
+                    }
+                }
+            });
+        }
+    });
+</script>

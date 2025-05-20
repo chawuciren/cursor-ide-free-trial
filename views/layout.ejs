@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CloudflareOpenMail - 开源高效的企业邮箱与API管理平台，基于Cloudflare构建">
+    <title><%= title %> - CloudflareOpenMail</title>
+    <!-- 使用本地Bootstrap CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <!-- 使用本地Bootstrap图标 -->
+    <link rel="stylesheet" href="/icons/bootstrap-icons.css">
+    <!-- 使用公共CSS -->
+    <link rel="stylesheet" href="/css/main.css">
+    <!-- 页面特定CSS -->
+    <% if (typeof pageCss !== 'undefined' && pageCss) { %>
+    <link rel="stylesheet" href="/css/<%= pageCss %>.css">
+    <% } %>
+    <%- style %>
+</head>
+<body>
+    <% if (typeof hideNavbar === 'undefined' || !hideNavbar) { %>
+    <header class="main-header">
+        <div class="container">
+            <nav class="navbar">
+                <div class="navbar-left">
+                    <a href="/" class="navbar-brand">CloudflareMailServer</a>
+                </div>
+                <div class="navbar-right">
+                    <ul class="navbar-nav">
+                        <% if (typeof session !== 'undefined' && session.isAdmin !== false) { %>
+                            <li class="nav-item"><a href="/" class="nav-link"><i class="bi bi-speedometer2"></i> 仪表盘</a></li>
+                            <li class="nav-item"><a href="/accounts" class="nav-link"><i class="bi bi-person-badge"></i> 账号管理</a></li>
+                        <% } %>
+                        <li class="nav-item"><a href="/mail" class="nav-link"><i class="bi bi-envelope"></i> 邮件查看</a></li>
+                        <li class="nav-item"><a href="/logout" class="nav-link"><i class="bi bi-box-arrow-right"></i> 退出登录</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </header>
+    <% } %>
+
+    <main class="container fade-in">
+        <%- body %>
+    </main>
+
+    <% if (typeof hideFooter === 'undefined' || !hideFooter) { %>
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; <%= new Date().getFullYear() %> CloudflareOpenMail - 开源高效的企业邮箱与API管理平台</p>
+        </div>
+    </footer>
+    <% } %>
+
+    <!-- 使用本地Bootstrap JS -->
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <!-- 使用公共JS -->
+    <script src="/js/main.js"></script>
+    <!-- 页面特定JS -->
+    <% if (typeof pageJs !== 'undefined' && pageJs) { %>
+    <script src="/js/<%= pageJs %>.js"></script>
+    <% } %>
+    <%- script %>
+</body>
+</html>

@@ -1,0 +1,545 @@
+.accounts-container {
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+.accounts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.accounts-filters {
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+}
+
+.accounts-filters form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 150px;
+}
+
+/* 下拉选框样式 */
+.filter-group select.form-control {
+    color: white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='rgba(255, 255, 255, 0.6)' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+    appearance: none;
+}
+
+.filter-group select.form-control option {
+    background-color: #2a3a5c;
+    color: white;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+    margin-top: 1rem;
+}
+
+.accounts-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.account-card {
+    flex: 1 0 30%;
+    min-width: 300px;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+    will-change: opacity;
+    cursor: pointer; /* 添加指针样式，提示可点击 */
+}
+
+/* 添加悬停效果 */
+.account-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.account-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.account-email-container {
+    max-width: 70%;
+    overflow: hidden;
+}
+
+.account-email {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.account-content {
+    flex: 1;
+    margin-bottom: 1rem;
+}
+
+.account-info p {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.account-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-active {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-inactive {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.copy-email-btn {
+    color: var(--primary-color);
+}
+
+.copy-password-btn {
+    color: var(--secondary-color);
+}
+
+.reset-password-btn {
+    color: var(--warning-color);
+}
+
+.view-mail-btn {
+    color: #6c5ce7; /* 紫色，用于区分其他按钮 */
+    text-decoration: none; /* 移除链接下划线 */
+}
+
+.view-btn {
+    color: var(--info-color);
+}
+
+.edit-btn {
+    color: var(--warning-color);
+}
+
+.delete-btn {
+    color: var(--danger-color);
+}
+
+.password-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.password-value {
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
+.new-password-container {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.password-note {
+    color: var(--warning-color);
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.action-btn:hover {
+    background-color: rgba(255, 255, 255, 0.8);
+    transform: translateY(-2px);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.empty-state .btn {
+    margin-top: 1rem;
+}
+
+/* 模态框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.show {
+    display: flex;
+    animation: fadeIn 0.5s ease-in forwards;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 500px;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--gray-color);
+    transition: var(--transition);
+}
+
+.close-btn:hover {
+    color: var(--danger-color);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* 同步进度条样式 */
+.progress-container {
+    margin: 1.5rem 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+
+.progress-status {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
+.result-summary {
+    margin: 1rem 0;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.05);
+    font-weight: 500;
+}
+
+.result-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.added-accounts, .removed-accounts {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.added-accounts h4 {
+    color: var(--success-color);
+    margin-top: 0;
+}
+
+.removed-accounts h4 {
+    color: var(--danger-color);
+    margin-top: 0;
+}
+
+.updated-accounts h4 {
+    color: var(--info-color);
+    margin-top: 0;
+}
+
+.added-list, .removed-list, .updated-list {
+    max-height: 150px;
+    overflow-y: auto;
+    padding-left: 1.5rem;
+    margin: 0;
+}
+
+.added-list li, .removed-list li, .updated-list li {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* 分页样式 */
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-info {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.pagination {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.page-link:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.page-link.active {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+}
+
+.page-link.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.page-size-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-size-selector label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.page-size-selector .form-control {
+    width: 5rem;
+    color: white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='rgba(255, 255, 255, 0.6)' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    padding-right: 2rem;
+    appearance: none;
+}
+
+.page-size-selector .form-control option {
+    background-color: #2a3a5c;
+    color: white;
+}
+
+/* Toast消息 */
+.toast-message {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.toast-message.show {
+    opacity: 1;
+}
+
+/* 响应式设计 */
+@media (max-width: 992px) {
+    .account-card {
+        flex: 1 0 45%;
+    }
+
+    .result-details {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .accounts-filters form {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .filter-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .filter-actions .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    .accounts-grid {
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 1rem;
+        flex-wrap: nowrap;
+    }
+
+    .account-card {
+        flex: 0 0 300px;
+        min-width: 300px;
+    }
+
+    .pagination-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .pagination {
+        margin: 1rem 0;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}

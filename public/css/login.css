@@ -1,0 +1,446 @@
+:root {
+    --primary-color: #4776E6;
+    --primary-hover: #3A66D6;
+    --secondary-color: #8E54E9;
+    --secondary-hover: #7E44D9;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --info-color: #3b82f6;
+    --dark-color: #1e293b;
+    --light-color: #f8fafc;
+    --gray-color: #94a3b8;
+    --border-radius: 0.5rem;
+    --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    --transition: all 0.3s ease;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    font-family: 'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #0f0c29;
+    position: relative;
+}
+
+/* 高级渐变背景 - 固定不变色 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+    z-index: -2;
+}
+
+/* 微妙的纹理效果 */
+body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+    z-index: -1;
+    opacity: 0.5;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 10;
+}
+
+/* 毛玻璃效果卡片 */
+.login-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 2.5rem;
+    border-radius: var(--border-radius);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    position: relative;
+    transition: all 0.3s ease;
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+    will-change: opacity;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.login-card:hover {
+    box-shadow:
+        0 15px 35px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.15);
+    transform: translateY(-5px);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.login-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: white;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+}
+
+.login-subtitle {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1rem;
+    font-weight: 400;
+    margin-top: 0.5rem;
+    letter-spacing: 0.5px;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+.input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    border-radius: var(--border-radius);
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+
+/* 确保输入组内的所有元素都有圆角 */
+.login-form .input-group .form-control {
+    border-radius: var(--border-radius) !important;
+}
+
+.input-group:focus-within .input-icon {
+    color: white;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.9rem 1rem 0.9rem 2.5rem;
+    height: auto;
+    font-size: 0.95rem;
+    border-radius: var(--border-radius) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 覆盖Bootstrap的输入组样式 */
+.input-group > :not(:first-child):not(.dropdown-menu):not(.valid-tooltip):not(.valid-feedback):not(.invalid-tooltip):not(.invalid-feedback) {
+    border-radius: var(--border-radius) !important;
+}
+
+.input-group > :first-child {
+    border-radius: var(--border-radius) !important;
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+.focus-border {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(to right, #4776E6, #8E54E9);
+    transition: width 0.3s ease;
+    border-radius: 0 0 4px 4px;
+}
+
+.input-group:focus-within .focus-border {
+    width: 100%;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+
+/* 确保密码输入框保持圆角 */
+#password {
+    border-radius: var(--border-radius) !important;
+}
+
+.password-toggle:hover {
+    color: white;
+}
+
+.remember-me {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.checkbox-container:hover {
+    color: white;
+}
+
+.checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: relative;
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: calc(var(--border-radius) / 2);
+    transition: all 0.3s ease;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.checkbox-container input:checked ~ .checkmark {
+    background-color: #4776E6;
+    border-color: #4776E6;
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.forgot-password {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.forgot-password:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+.login-btn {
+    width: 100%;
+    height: auto;
+    padding: 0.8rem 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    background: linear-gradient(to right, #4776E6, #8E54E9);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn-text {
+    margin-right: 0.75rem;
+}
+
+.btn-icon {
+    transition: all 0.3s ease;
+}
+
+.login-btn:hover .btn-icon {
+    transform: translateX(3px);
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    background-color: rgba(255, 59, 48, 0.15);
+    border: 1px solid rgba(255, 59, 48, 0.3);
+    color: white;
+}
+
+.login-footer {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.system-info {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.system-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+}
+
+.system-badge:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.system-badge i {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.login-page-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+    width: 100%;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .login-container {
+        max-width: 90%;
+        padding: 0 1rem;
+    }
+
+    .login-card {
+        padding: 2rem;
+    }
+
+    .login-title {
+        font-size: 2rem;
+    }
+
+    .system-info {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .system-badge {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-card {
+        padding: 1.5rem;
+    }
+
+    .login-title {
+        font-size: 1.8rem;
+    }
+}
+
+/* 旋转动画 */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}

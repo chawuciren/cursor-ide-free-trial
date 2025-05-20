@@ -1,0 +1,351 @@
+.generate-account-container {
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.generate-account-form,
+.generate-account-info,
+#generation-progress,
+#generation-result {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.form-text {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius);
+    color: white;
+    transition: var(--transition);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.25);
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+textarea.form-control {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.info-title {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-content {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.info-content h3 {
+    font-size: 1.1rem;
+    margin: 1.5rem 0 0.5rem;
+}
+
+.info-content ul,
+.info-content ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-content li {
+    margin-bottom: 0.5rem;
+}
+
+/* 进度条样式 */
+.progress-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.progress-header h2 {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.progress-container {
+    margin-bottom: 2rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+
+.progress-status {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
+.progress-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.step-icon {
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.step-content {
+    flex: 1;
+}
+
+.step-title {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.step-status {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.step-item.active .step-icon {
+    color: var(--primary-color);
+}
+
+.step-item.success .step-icon {
+    color: var(--success-color);
+}
+
+.step-item.error .step-icon {
+    color: var(--danger-color);
+}
+
+/* 结果样式 */
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.result-header h2 {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.result-summary {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.05);
+    text-align: center;
+}
+
+.success-count {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.failed-count {
+    color: var(--danger-color);
+    font-weight: bold;
+}
+
+.result-details {
+    margin-bottom: 1.5rem;
+}
+
+.generated-accounts h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.accounts-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.account-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.account-email {
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+.account-password {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.password-value {
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
+.copy-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.copy-btn:hover {
+    color: var(--secondary-color);
+}
+
+.result-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+/* Toast消息 */
+.toast-message {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.toast-message.show {
+    opacity: 1;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .header-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .header-actions .btn {
+        width: 100%;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+    }
+    
+    .result-actions {
+        flex-direction: column;
+    }
+    
+    .result-actions .btn {
+        width: 100%;
+    }
+}

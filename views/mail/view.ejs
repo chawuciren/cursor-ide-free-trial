@@ -1,0 +1,84 @@
+<%- contentFor('body') %>
+<div class="email-detail-container">
+    <div class="email-detail-header fade-in">
+        <div class="email-detail-nav">
+            <a href="/mail" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回邮件列表
+            </a>
+        </div>
+        <div class="email-detail-actions">
+            <button id="reply-btn" class="btn btn-primary">
+                <i class="bi bi-reply"></i> 回复
+            </button>
+            <button id="forward-btn" class="btn btn-primary">
+                <i class="bi bi-forward"></i> 转发
+            </button>
+            <button id="delete-btn" class="btn btn-danger" data-id="<%= email.id %>">
+                <i class="bi bi-trash"></i> 删除
+            </button>
+        </div>
+    </div>
+
+    <div class="email-detail-card glass-card fade-in">
+        <h1 class="email-detail-subject"><%= email.subject %></h1>
+
+        <div class="email-detail-meta">
+            <div class="email-detail-label">发件人:</div>
+            <div class="email-detail-value"><%= email.sender_name %> <<%= email.sender %>></div>
+
+            <div class="email-detail-label">收件人:</div>
+            <div class="email-detail-value">
+                <% email.recipients.forEach((recipient, index) => { %>
+                    <%= recipient %><%= index < email.recipients.length - 1 ? ', ' : '' %>
+                <% }); %>
+            </div>
+
+            <% if (email.cc && email.cc.length > 0) { %>
+                <div class="email-detail-label">抄送:</div>
+                <div class="email-detail-value">
+                    <% email.cc.forEach((cc, index) => { %>
+                        <%= cc %><%= index < email.cc.length - 1 ? ', ' : '' %>
+                    <% }); %>
+                </div>
+            <% } %>
+
+            <div class="email-detail-label">日期:</div>
+            <div class="email-detail-value"><%= email.date %></div>
+
+            <div class="email-detail-label">账号:</div>
+            <div class="email-detail-value"><%= email.account %></div>
+        </div>
+
+        <div class="email-detail-body">
+            <%- email.body %>
+        </div>
+
+        <% if (email.attachments && email.attachments.length > 0) { %>
+            <div class="email-detail-attachments">
+                <h3>附件 (<%= email.attachments.length %>)</h3>
+                <div class="attachment-list">
+                    <% email.attachments.forEach(attachment => { %>
+                        <div class="attachment-item">
+                            <div class="attachment-icon">
+                                <i class="bi bi-file-earmark"></i>
+                            </div>
+                            <div class="attachment-info">
+                                <div class="attachment-name"><%= attachment.name %></div>
+                                <div class="attachment-meta"><%= attachment.size %> - <%= attachment.type %></div>
+                            </div>
+                            <a href="/mail/attachment/<%= email.id %>/<%= attachment.id %>" class="attachment-download" title="下载附件">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
+
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->

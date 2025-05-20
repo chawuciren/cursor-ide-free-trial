@@ -1,0 +1,690 @@
+.mail-container {
+    padding: 2rem 0;
+}
+
+.mail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.mail-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+#mark-all-read-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+#mark-all-read-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#mark-all-read-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* 使用与accounts.css相同的筛选框样式 */
+.accounts-filters {
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+}
+
+.accounts-filters form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 150px;
+}
+
+.filter-group label {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.filter-group .form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius);
+    color: white;
+    transition: var(--transition);
+}
+
+.filter-group .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.25);
+}
+
+.filter-group .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* 下拉选框样式 */
+.filter-group select.form-control {
+    color: white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='rgba(255, 255, 255, 0.6)' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+    appearance: none;
+}
+
+.filter-group select.form-control option {
+    background-color: #2a3a5c;
+    color: white;
+}
+
+/* 日期范围样式 */
+.date-range-group {
+    min-width: 150px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+    margin-top: 1rem;
+}
+
+.filter-actions .btn {
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.filter-actions .btn i {
+    font-size: 1rem;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.alert-success {
+    background-color: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.alert-danger {
+    background-color: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.emails-container {
+    margin-bottom: 2rem;
+}
+
+.emails-list {
+    width: 100%;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+    will-change: opacity;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.email-list-header {
+    display: grid;
+    grid-template-columns: minmax(180px, 20%) minmax(250px, 40%) minmax(150px, 15%) minmax(120px, 15%) 80px;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 600;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.email-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 20%) minmax(250px, 40%) minmax(150px, 15%) minmax(120px, 15%) 80px;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    align-items: center;
+    transition: var(--transition);
+    position: relative;
+}
+
+.email-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.email-row.unread {
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+.email-row.unread:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.unread-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--info-color);
+    margin-right: 0.5rem;
+}
+
+.email-col-sender {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.email-sender {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.email-col-subject {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.email-subject {
+    font-weight: 500;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.25rem;
+}
+
+.email-preview {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.email-col-account {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.email-col-date {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+}
+
+.email-col-actions {
+    display: flex;
+    justify-content: center;
+}
+
+.email-view-btn {
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: var(--transition);
+}
+
+.email-view-btn:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.empty-state .btn {
+    margin-top: 1rem;
+}
+
+/* 分页样式 */
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-info {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.pagination {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.page-link:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.page-link.active {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+}
+
+.page-link.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.page-size-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-size-selector label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.page-size-selector .form-control {
+    width: 5rem;
+    color: white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='rgba(255, 255, 255, 0.6)' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    padding-right: 2rem;
+    appearance: none;
+}
+
+.page-size-selector .form-control option {
+    background-color: #2a3a5c;
+    color: white;
+}
+
+/* 模态框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.show {
+    display: flex;
+    animation: fadeIn 0.5s ease-in forwards;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 500px;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--gray-color);
+    transition: var(--transition);
+}
+
+.close-btn:hover {
+    color: var(--danger-color);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Toast消息 */
+.toast-message {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.toast-message.show {
+    opacity: 1;
+}
+
+/* 邮件详情页样式 */
+.email-detail-container {
+    padding: 2rem 0;
+}
+
+.email-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.email-detail-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.email-detail-card {
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+    will-change: opacity;
+}
+
+.email-detail-subject {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+.email-detail-meta {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.email-detail-label {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.email-detail-value {
+    color: white;
+}
+
+.email-detail-body {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.email-detail-body a {
+    color: var(--primary-color);
+}
+
+.email-detail-attachments {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.attachment-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+    animation-delay: 0.2s;
+    will-change: opacity;
+}
+
+.attachment-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.attachment-icon {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.attachment-info {
+    flex: 1;
+}
+
+.attachment-name {
+    font-weight: 500;
+    color: white;
+    margin-bottom: 0.25rem;
+}
+
+.attachment-meta {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.attachment-download {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 1.25rem;
+    transition: var(--transition);
+}
+
+.attachment-download:hover {
+    color: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+    .email-list-header,
+    .email-row {
+        grid-template-columns: minmax(150px, 20%) minmax(200px, 35%) minmax(120px, 15%) minmax(100px, 15%) 60px;
+    }
+}
+
+@media (max-width: 992px) {
+    .filter-group {
+        min-width: calc(50% - 0.75rem);
+    }
+
+    .filter-actions {
+        width: 100%;
+        margin-top: 1rem;
+        justify-content: flex-end;
+    }
+
+    .email-list-header,
+    .email-row {
+        grid-template-columns: minmax(120px, 25%) minmax(180px, 40%) 0fr minmax(80px, 20%) 60px;
+    }
+
+    .email-col-account {
+        display: none;
+    }
+
+    .pagination-container {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .accounts-filters form {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .filter-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .filter-actions .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    .email-list-header {
+        display: none;
+    }
+
+    .email-row {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+
+    .email-col-sender {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .email-col-sender::after {
+        content: attr(data-date);
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .email-col-subject {
+        grid-row: 2;
+        grid-column: 1;
+    }
+
+    .email-col-date,
+    .email-col-account {
+        display: none;
+    }
+
+    .email-col-actions {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+
+    .email-detail-meta {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+    }
+
+    .email-detail-label {
+        margin-top: 0.5rem;
+    }
+
+    .pagination {
+        margin: 1rem 0;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}

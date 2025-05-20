@@ -1,0 +1,40 @@
+server:
+  port: 3116 # 端口
+  host: '0.0.0.0' # 地址
+proxy:
+  enabled: false # 代理设置
+  host: 127.0.0.1 # 代理地址
+  port: 10808 # 代理端口
+  protocol: socks5 # 代理协议
+cloudflare:
+  - emailForward: Gmail用户名@gmail.com # 邮箱用户名
+    domain: '@你的域名.com' # 域名
+    apiToken: API令牌 # API令牌
+    zoneId: zoneId # Zone ID
+email:
+  user: Gmail用户名@gmail.com # 邮箱用户名
+  pass: 邮箱密码或应用专用密码 # 邮箱密码或应用专用密码
+  smtp:
+    host: smtp.gmail.com # SMTP服务器地址
+    port: 465 # SMTP服务器端口
+    secure: true # SMTP服务器是否使用SSL/TLS
+    enabled: false # SMTP服务器是否启用
+  imap:
+    enabled: true # IMAP服务器是否启用
+    host: imap.gmail.com # IMAP服务器地址
+    port: 993 # IMAP服务器端口
+    secure: true # IMAP服务器是否使用SSL/TLS
+logging:
+  level: info # 日志级别
+  path: logs # 日志路径
+  maxSize: 10m # 日志文件大小上限
+  maxFiles: 5 # 日志文件数量
+admin:
+  username: 'admin' # 管理员用户名
+  password: 'admin123' # 管理员密码
+jwt:
+  secret: "JWT密钥内容"  # JWT密钥
+  expiresIn: "24h"      # 24小时过期
+loginLimiter:
+  maxAttempts: 5     # 最大尝试次数
+  lockTime: 600000   # 锁定时间（10分钟，单位：毫秒）

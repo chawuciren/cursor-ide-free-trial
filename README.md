@@ -1,275 +1,220 @@
-# 🚀 Cursor IDE Free Trial
+# CloudflareMailServer - 开源高效的企业邮箱与API管理平台
 
-[中文版本](README_CN.md)
+## 项目概述
 
-![Cursor IDE Free Trial Screenshot](doc/images/screenshot.png)
+CloudflareMailServer是一个基于Cloudflare Email Routing和Node.js的开源企业邮箱管理平台。该系统允许管理员通过简洁的Web界面管理多个邮箱账号（如account_name@domain.com），并直接通过IMAP协议查看和处理这些邮箱的邮件。系统不存储邮件内容，而是作为一个代理，直接连接到第三方邮件服务（如Gmail）来获取和显示邮件。账号管理直接基于Cloudflare的邮件路由配置，添加或删除账号会直接修改Cloudflare的转发规则。系统使用SQLite数据库进行本地数据存储，适合个人或小型团队管理多个企业邮箱账号。
 
-🎯 AI IDE Free Trial is a utility tool designed to help users better experience the trial version of Cursor IDE. This tool primarily addresses machine code verification issues during the trial period and provides convenient email and account management features.
+## 文档
 
-## ✨ Project Introduction
+详细的文档在`doc`目录中提供：
 
-This project is an Electron-based utility tool focused on optimizing the Cursor IDE trial experience. Unlike other tools that only provide partial implementation or rely on commercial/restricted backend APIs, this tool offers a complete open-source implementation of the entire process from email handling to registration, login, and account switching. After configuration, users can achieve truly unrestricted trial usage.
+- [安装文档](doc/installation.md) - 详细说明系统的安装与部署方法，包括前提条件和常见问题排查
+- [配置文档](doc/configuration.md) - 详细说明系统配置文件的各项参数和配置方法
+- [API接口文档](doc/api.md) - 提供系统所有API的详细说明，包括认证、账号管理和邮件操作等
+- [使用说明](doc/usage.md) - 提供系统的基本使用指南，包括系统概述、功能说明和常见操作流程
+- [Cloudflare邮箱设置指南](doc/cloudflare-email-setup.md) - 详细说明如何配置Cloudflare电子邮件路由和Gmail
 
-Main features include:
-- 🔑 Resolving machine code verification issues
-- 📧 Providing convenient email sending and receiving functionality
-- 👤 Simplifying account management process
-- ⚡ Optimizing trial experience
+## 系统截图
 
-⚠️ **Important Note:** If you find Cursor IDE meets your needs during the trial, we strongly recommend purchasing the official version for a complete service experience.
+### 仪表盘
+![仪表盘](doc/images/web/dashboard.png)
 
-🖥️ **Platform Support:**
-- ✅ Windows: Full support
-- 🚧 macOS: In development
-- 🚧 Linux: In development
+### 账号管理
+![账号管理](doc/images/web/accounts.png)
 
-## 🛠️ Technology Stack
+### 邮件管理
+![邮件管理](doc/images/web/emails.png)
 
-### 🖥️ Desktop App
-- ⚛️ Electron v33.0.0: Cross-platform desktop application framework
-- 🟢 Node.js: Runtime environment
-- 📝 JavaScript/TypeScript: Primary development languages
+## 技术栈
 
-### 🔧 Local Server
-- 🌐 Express.js: Web application framework
-- 🔄 WebSocket: Real-time communication
-- 📄 EJS: Template engine
-- 💾 SQLite: Local data storage
-- 🤖 Puppeteer: Browser automation
-- 🌍 Axios: HTTP client
+- **后端框架**: Express.js
+- **数据存储**: SQLite数据库
+- **模板引擎**: EJS
+- **认证**: JWT认证和基于会话的Web认证
+- **日志**: 自定义日志系统
+- **配置管理**: YAML配置文件
+- **邮件路由**: Cloudflare Email Routing API
+- **邮件处理**: IMAP/SMTP客户端
+- **账号管理**: Cloudflare API
+- **Web界面**: 响应式设计的管理后台
 
-## 💫 Features
+## 系统架构
 
-- 📨 Email service integration
-- 🎨 Modern user interface
-- 👥 Account management system
-- 🔄 Real-time communication support
-- 💾 Local data persistence
-- 🤖 Browser automation functionality
+系统主要由以下几个部分组成：
 
-## 📦 Installation Guide
+1. **服务器核心** (server.js): 负责初始化Express应用、配置中间件、启动HTTP服务器
+2. **Web界面** (routes/): 处理Web界面路由，包括管理后台和邮件查看界面
+3. **API路由** (api/): 处理所有API请求，包括账号和邮件相关操作
+4. **工具模块** (utils/): 提供各种辅助功能，如日志记录、配置管理、邮件处理等
+5. **Cloudflare集成** (utils/cloudflare-email-router.js): 与Cloudflare API交互，管理邮件路由规则
+6. **视图模板** (views/): EJS模板文件，用于渲染Web界面
+7. **静态资源** (public/): 提供前端页面和静态资源
+8. **邮件处理** (utils/mail-service.js): 通过IMAP/SMTP协议与第三方邮件服务交互
+9. **数据存储** (utils/database.js): 管理SQLite数据库连接和操作
 
-### 💻 System Requirements
+## 功能模块
 
-- Windows 10 or higher (Currently only Windows platform is supported)
+### 1. 账号管理
 
-⚠️ **Note:** Support for macOS and Linux platforms is under development
+- 账号列表：从Cloudflare获取并显示所有邮件转发规则
+- 账号创建：在Cloudflare创建新的邮件转发规则
+- 账号删除：删除Cloudflare中的邮件转发规则
+- 账号信息：本地存储账号的额外信息（如备注等）
 
-### 🔧 Installation Steps
+### 2. 邮件处理
 
-1. 📥 Download the software:
-   - Download the latest version from the releases page https://github.com/chawuciren/cursor-ide-free-trial/releases
+- 邮件列表：通过IMAP获取指定账号的邮件列表
+- 邮件查看：通过IMAP直接查看第三方邮箱中的邮件内容
+- 邮件发送：通过SMTP直接发送邮件
+- 附件查看：查看邮件附件（不下载到本地服务器）
+- 定时拉取：后台定时拉取新邮件
 
-2. ⚙️ Install the program:
-   - Extract the downloaded archive to a specified directory
-   - Run `Cursor_IDE_Free_Trial.exe` with administrator privileges from the extracted directory
+### 3. Web管理界面
 
-### 📝 Usage Instructions
+- 仪表盘：显示邮箱使用统计和系统状态
+- 账号管理：管理Cloudflare邮件转发规则
+- 邮件查看：通过IMAP浏览邮件
+- 系统设置：配置IMAP/SMTP和Cloudflare连接参数
+- 用户认证：基于JWT的用户登录和会话管理
 
-#### ⚙️ Configuration Guide
+### 4. API接口
 
-1. **🌐 Network Proxy Configuration**
-   - Go to the "Settings" tab
-   - Check "Enable Proxy"
-   - Fill in proxy host and port information
-   - Click "Save Settings" to confirm changes
+- 账号API：提供账号创建和删除功能
+- 邮件API：提供邮件列表和邮件内容获取功能
+- 验证API：基于JWT的接口认证
 
-2. **📧 Email Service Configuration**
-   - Check "Use Proxy" to ensure email service stability
-   - Choose one of the following email configuration methods:
+## 配置说明
 
-   A. IMAP Method (Recommended):
-      - Prerequisites: Configure Cloudflare domain email forwarding ([Detailed instructions](doc/cloudflare-email-setup-cn.md))
-      - Configuration steps:
-        * Choose Gmail as receiving mailbox (recommended)
-        * Enter complete receiving email address
-        * Enter email application password (Gmail requires app-specific password)
-        * Enable "Enable IMAP"
-        * Set IMAP host to: imap.gmail.com
-        * Set IMAP port to: 993
+> **重要提示**：在配置系统前，请确保您已完成Cloudflare账号注册、域名验证、Email Routing启用以及API密钥创建等前置工作。详细的前置配置步骤请参考[Cloudflare邮箱设置指南](doc/cloudflare-email-setup.md)。
 
-   B. TempMail Method:
-      - Prerequisites: Understand TempMail service usage ([Detailed instructions](doc/tempmail-setup-cn.md))
-      - Configuration steps:
-        * Set preferred email domain (must match TempMail definition)
-        * Check "Custom Username" option
-        * Enter username set in TempMail
-        * Enter corresponding PIN code
+系统使用`config.yaml`文件进行配置，项目中提供了`config.yaml.sample`作为配置模板。
 
-3. **🌍 Browser Configuration**
-   - Basic settings:
-     * Check "Enable Proxy" for network access
-     * Recommended to enable "Check Browser Fingerprint"
-     * Recommended to disable "Headless Mode" (to avoid CAPTCHA issues)
-   
-   - Fingerprint browser configuration (recommended):
-     * Download and install [fingerprint-chromium](https://github.com/adryfish/fingerprint-chromium)
-     * Locate chrome.exe installation path
-     * Fill in "Chrome Executable Path"
-     * Enable fingerprint features as needed
+配置文件包含以下主要部分：
+- 服务器配置（端口、监听地址）
+- 代理配置（可选）
+- Cloudflare配置（API令牌、区域ID等）
+- 邮件服务配置（IMAP/SMTP设置）
+- 日志配置
+- 管理员账号配置
+- JWT认证配置
+- 登录限制配置
 
-4. **📝 Registration Configuration**
-   - Set registration type to "cursor"
-   - Ensure all configuration items are completed
-   - Click "Save Settings" to save all configurations
+详细的配置说明请参考[配置文档](doc/configuration.md)。
 
-#### 🔄 Usage Process
+## 安装与部署
 
-1. **Quick Usage Method**
-   - After completing all configurations, you can use the "One-Click Account Switch" feature
-   - Click start in the "One-Click Switch" tab to automatically complete the entire process
+CloudflareMailServer的安装与部署非常简单，只需几个步骤即可完成。
 
-2. **Step-by-Step Operation**
-   A. Open Account List:
-      - Go to "Account List" tab
-      - Manage all account-related operations on this page
+### 快速开始
 
-   B. Email Binding:
-      - Click "Generate/Bind Account" button in the account list page
-      - Wait for email generation and route binding to complete
-      - Check binding status for confirmation
+1. 克隆代码库并安装依赖
+   ```bash
+   git clone https://github.com/chawuciren/cloudflare-mail-server.git
+   cd cloudflare-mail-server
+   npm install
+   ```
 
-   C. Account Registration:
-      - Find the account to register in the account list
-      - Click the "Actions" dropdown menu for that account
-      - Select "Account Registration" option
-      - Wait for automatic registration process to complete
-      - System will automatically save the registered account information
+2. 配置系统
+   - 复制`config.yaml.sample`为`config.yaml`
+   - 修改配置文件中的必要参数
 
-   D. Account Login:
-      - Find the account to log in from the account list
-      - Click the "Actions" dropdown menu for that account
-      - Select "Account Login" option
-      - System will automatically perform:
-        * Account login
-        * Machine code reset
-        * IDE account switching
-      - Wait for operations to complete
+3. 初始化数据库并启动服务器
+   ```bash
+   node utils/init-db.js
+   npm start
+   ```
 
-3. **Important Notes**
-   - Ensure network proxy is stable and available
-   - Keep software running in background until operations complete
-   - Regularly check configuration status
-   - Check logs for troubleshooting
+4. 访问Web界面
+   ```
+   http://localhost:3116
+   ```
 
-### Development Environment Setup
+详细的安装与部署说明，包括前提条件、Cloudflare配置、Gmail配置和常见问题排查等，请参考[安装文档](doc/installation.md)。
 
-```bash
-# Clone project
-git clone [project URL]
+## 开发指南
 
-# Install main app dependencies
-npm install
+### 项目结构
 
-# Install server dependencies
-cd server
-npm install
-cd ..
+```
+cloudflare-open-mail/
+├── api/                  # API路由
+│   ├── accounts.js       # 账号管理API
+│   ├── emails.js         # 邮件管理API
+│   ├── auth.js           # 认证API
+│   └── routes.js         # API路由入口
+├── public/               # 静态资源
+│   ├── css/              # 样式文件
+│   ├── js/               # JavaScript文件
+│   └── img/              # 图片资源
+├── routes/               # Web路由
+│   ├── accounts.js       # 账号管理页面路由
+│   ├── admin.js          # 管理后台路由
+│   ├── mail.js           # 邮件查看路由
+│   └── routes.js         # Web路由入口
+├── utils/                # 工具模块
+│   ├── account-generator.js # 账号生成工具
+│   ├── auth-middleware.js # 认证中间件
+│   ├── cloudflare-email-router.js # Cloudflare邮件路由
+│   ├── config.js         # 配置管理
+│   ├── database.js       # 数据库连接和操作
+│   ├── init-db.js        # 数据库初始化脚本
+│   ├── logger.js         # 日志工具
+│   ├── mail-service.js   # 邮件服务
+│   └── string-helper.js  # 字符串处理工具
+├── views/                # EJS模板
+│   ├── admin/            # 管理后台视图
+│   ├── accounts/         # 账号管理视图
+│   ├── mail/             # 邮件查看视图
+│   ├── partials/         # 页面组件
+│   ├── layout.ejs        # 主布局模板
+│   └── index.ejs         # 首页模板
+├── data/                 # 数据存储目录
+│   └── database.sqlite   # SQLite数据库文件
+├── doc/                  # 文档
+│   ├── api.md            # API文档
+│   └── usage.md          # 使用说明
+├── logs/                 # 日志文件
+├── config.yaml           # 配置文件
+├── config.yaml.sample    # 配置文件示例
+├── package.json          # 项目依赖
+├── README.md             # 项目说明
+└── server.js             # 服务器入口
 ```
 
-Node.js environment configuration for packaging:
-   - Download Node.js runtime for your platform
-   - Root directory configuration:
-     - Windows: Name Node.js environment folder as `node_win32`
-     - macOS: Name Node.js environment folder as `node_darwin`
-     - Linux: Name Node.js environment folder as `node_linux`
-   - Server directory configuration:
-     - Copy Node.js environment corresponding to current system to `server` directory, named uniformly as `node`
-     - Example: On Windows, copy `node_win32` to `server/node`
+### 开发模式
+
+使用以下命令启动开发模式，支持代码修改自动重启：
 
 ```bash
-# Start development environment
 npm run dev
-
-# Start on Windows
-npm run dev:win
-
-# Build application
-npm run build
 ```
 
-Directory structure example:
-   ```
-   Project Root/
-   ├── node_win32/     # Windows Node.js environment
-   ├── node_darwin/    # macOS Node.js environment
-   ├── node_linux/     # Linux Node.js environment
-   └── server/
-       └── node/       # Current system Node.js environment (for debugging)
-   ```
+## 安全注意事项
 
-## Project Structure
+1. **配置文件保护**：确保`config.yaml`文件不会被公开访问，该文件包含敏感信息如API令牌和密码。
 
-```
-.
-├── src/            # Desktop application source code
-├── public/         # Static resources
-├── views/          # View files
-├── server/         # Local server
-│   ├── api/        # API routes
-│   ├── flows/      # Business flows
-│   ├── utils/      # Utility functions
-│   ├── node/       # Current system Node.js environment (for debugging)
-│   ├── app.js      # Application configuration
-│   └── server.js   # Server entry point
-├── scripts/        # Build and utility scripts
-├── extensions/     # Plugin system
-├── release/        # Build output directory
-├── node_win32/     # Windows Node.js environment
-├── node_darwin/    # macOS Node.js environment
-└── node_linux/     # Linux Node.js environment
-```
+2. **API令牌权限**：为Cloudflare API令牌分配最小必要权限，只允许Email Routing和DNS操作。
 
-## Dependencies
+3. **应用专用密码**：对于Gmail等邮箱，使用应用专用密码而不是主密码。
 
-### Desktop Application
-- [Electron](https://www.electronjs.org/): For building cross-platform desktop applications
-- [Node.js](https://nodejs.org/): JavaScript runtime
-- [electron-builder](https://www.electron.build/): Electron application packaging tool
+4. **定期更新密码**：定期更新管理员密码和JWT密钥。
 
-### Server
-- [Express](https://expressjs.com/): Web application framework
-- [ws](https://github.com/websockets/ws): WebSocket client and server
-- [SQLite3](https://github.com/TryGhost/node-sqlite3): SQLite database
-- [Puppeteer](https://pptr.dev/): Browser automation tool
-- [Nodemailer](https://nodemailer.com/): Email sending
-- [EJS](https://ejs.co/): Embedded JavaScript templating
+5. **HTTPS部署**：在生产环境中使用HTTPS，可以通过反向代理如Nginx配置SSL。
 
-## Configuration Details
+6. **日志管理**：定期检查和轮换日志文件，确保不会泄露敏感信息。
 
-### Node.js Environment Configuration
-- Runtime requirements: Node.js 14.0.0 or higher
-- For development debugging, ensure `server/node` directory contains Node.js environment for current system
-- Production environment automatically selects corresponding Node.js environment (node_win32/node_darwin/node_linux)
+7. **数据库备份**：定期备份SQLite数据库文件，但确保备份文件安全存储。
 
-### Server Configuration
-- Default port: 3000 (can be modified via startup parameters)
-- Development environment: Uses APP_ROOT environment variable
-- Production environment: Uses RES_PATH environment variable
+## 贡献指南
 
-## Contributing
+欢迎对本项目进行贡献！请遵循以下步骤：
 
-Issues and Pull Requests are welcome to help improve the project.
+1. Fork本仓库
+2. 创建您的特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交您的更改 (`git commit -m 'Add some amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 开启一个Pull Request
 
-## License
+## 许可证
 
-This project is open-source under the ISC license.
-
-## Acknowledgments
-
-Thanks to the following open-source projects and communities:
-
-- Electron community
-- Node.js community
-- Express.js community
-- SQLite community
-- All project contributors
-
-## Author
-
-Guinea Pig Special Forces
-
-## Version History
-
-- Desktop App: v1.1.6
-- Server: v1.1.2
+MIT

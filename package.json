@@ -1,109 +1,33 @@
 {
-  "name": "cursor-ide-free-trial",
-  "version": "1.2.5",
-  "main": "src/main/index.js",
+  "name": "free-copilot",
+  "version": "1.0.0",
+  "main": "server.js",
   "scripts": {
-    "start": "electron .",
-    "start:win": "chcp 65001>nul && electron .",
-    "dev": "cross-env NODE_ENV=development electron .",
-    "dev:win": "chcp 65001>nul && cross-env NODE_ENV=development electron .",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "node scripts/build.js",
-    "build:dir": "node scripts/build.js --dir"
-  },
-  "build": {
-    "appId": "org.trial.free.ide.ai",
-    "productName": "Cursor_IDE_Free_Trial",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "src/**/*",
-      "public/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "views",
-        "to": "views",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "dist_public",
-        "to": "public",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "dist_server",
-        "to": "server",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "extensions",
-        "to": "extensions",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "dist_package.json",
-        "to": "package.json"
-      }
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "public/assets/logo.png"
-    },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "portable": {
-      "artifactName": "CursorIDEFreeTrial.exe"
-    },
-    "asar": true
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
-  "author": "豚鼠特攻",
+  "author": "",
   "license": "ISC",
-  "description": "Cursor IDE 免费试用工具",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-ejs-layouts": "^2.5.1",
+    "express-session": "^1.18.1",
+    "imapflow": "^1.0.181",
+    "js-yaml": "^4.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mailparser": "^3.7.2",
+    "nodemailer": "^6.10.0",
+    "open": "^10.1.0",
+    "socks": "^2.8.4",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
+    "ws": "^8.18.1"
+  },
   "devDependencies": {
-    "cross-env": "^7.0.3",
-    "electron": "^33.0.0",
-    "electron-builder": "^25.1.8",
-    "javascript-obfuscator": "^4.1.1",
-    "nan": "^2.22.1",
-    "node-gyp": "^11.1.0",
     "nodemon": "^3.0.3"
   }
 }

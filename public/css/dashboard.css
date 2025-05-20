@@ -1,0 +1,391 @@
+.dashboard-container {
+    padding: 1.5rem 0;
+}
+
+.dashboard-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.dashboard-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: white;
+}
+
+.highlight {
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+}
+
+.dashboard-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+}
+
+.dashboard-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-main {
+    flex: 1;
+}
+
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: auto;
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+    will-change: opacity;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.stat-icon {
+    font-size: 1.75rem;
+    margin-right: 1rem;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+}
+
+.stat-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+}
+
+.stat-footer {
+    margin-left: auto;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.stat-link {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    transition: var(--transition);
+}
+
+.stat-link i {
+    margin-left: 0.5rem;
+    transition: var(--transition);
+}
+
+.stat-link:hover {
+    color: white;
+}
+
+.stat-link:hover i {
+    transform: translateX(5px);
+}
+
+.stat-info {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.dashboard-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.recent-activity {
+    margin-bottom: 1.5rem;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: white;
+    position: relative;
+    padding-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    border-radius: 2px;
+}
+
+.activity-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: var(--transition);
+    flex: 1 0 45%;
+    min-width: 250px;
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+    animation-delay: 0.2s;
+    will-change: opacity;
+}
+
+.activity-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.activity-icon {
+    font-size: 1.1rem;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+}
+
+.activity-content {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.activity-text {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    flex: 1;
+}
+
+.activity-time {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+    margin-left: 0.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.alert {
+    margin-bottom: 1.5rem;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    animation: fadeIn 0.5s ease-in forwards;
+}
+
+.alert i {
+    font-size: 1.25rem;
+}
+
+.alert-danger {
+    background-color: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fff;
+}
+
+/* Toast消息样式 */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--box-shadow);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    max-width: 350px;
+    animation: fadeIn 0.3s ease-in forwards;
+}
+
+.toast.fade-out {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+.toast-icon {
+    margin-right: 0.75rem;
+    font-size: 1.25rem;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 0.25rem;
+    margin-left: 0.5rem;
+    transition: color 0.2s;
+}
+
+.toast-close:hover {
+    color: #fff;
+}
+
+.toast-success {
+    background-color: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.toast-error {
+    background-color: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.toast-info {
+    background-color: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 992px) {
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-stats {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+        flex-wrap: nowrap;
+        margin-bottom: 1rem;
+    }
+
+    .stat-card {
+        flex: 0 0 250px;
+        min-width: 250px;
+    }
+
+    .dashboard-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .action-btn {
+        flex: 0 1 auto;
+        min-width: 140px;
+        justify-content: center;
+    }
+
+    .activity-list {
+        flex-direction: row;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 0.5rem;
+    }
+
+    .activity-item {
+        flex: 0 0 280px;
+        min-width: 280px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-card {
+        flex: 0 0 220px;
+        min-width: 220px;
+        padding: 0.75rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+}

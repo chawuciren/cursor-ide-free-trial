@@ -1,0 +1,232 @@
+.sync-account-container {
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.sync-account-form,
+.sync-account-info {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+}
+
+.sync-description {
+    margin-bottom: 2rem;
+}
+
+.sync-description h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sync-description p {
+    margin-bottom: 0.5rem;
+}
+
+.sync-description ul {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.sync-description li {
+    margin-bottom: 0.5rem;
+}
+
+.progress-container {
+    margin: 2rem 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+
+.progress-status {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
+.result-summary {
+    margin: 1rem 0;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.result-details {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.result-card {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.05);
+    height: 100%;
+    margin-bottom: 1rem;
+}
+
+.result-card h4 {
+    font-size: 1rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.added-accounts h4 {
+    color: var(--success-color);
+}
+
+.removed-accounts h4 {
+    color: var(--danger-color);
+}
+
+.updated-password-accounts h4 {
+    color: var(--info-color);
+}
+
+.updated-status-accounts h4 {
+    color: var(--warning-color);
+}
+
+.added-list,
+.removed-list,
+.updated-password-list,
+.updated-status-list {
+    max-height: 250px;
+    overflow-y: auto;
+    padding-left: 1.5rem;
+    margin: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) rgba(255, 255, 255, 0.1);
+}
+
+/* 自定义滚动条样式 */
+.added-list::-webkit-scrollbar,
+.removed-list::-webkit-scrollbar,
+.updated-password-list::-webkit-scrollbar,
+.updated-status-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.added-list::-webkit-scrollbar-track,
+.removed-list::-webkit-scrollbar-track,
+.updated-password-list::-webkit-scrollbar-track,
+.updated-status-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.added-list::-webkit-scrollbar-thumb,
+.removed-list::-webkit-scrollbar-thumb,
+.updated-password-list::-webkit-scrollbar-thumb,
+.updated-status-list::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 3px;
+}
+
+.added-list li,
+.removed-list li,
+.updated-password-list li,
+.updated-status-list li {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    word-break: break-all;
+}
+
+/* 摘要和更多提示的样式 */
+.added-list li strong,
+.removed-list li strong,
+.updated-password-list li strong,
+.updated-status-list li strong {
+    color: var(--primary-color);
+    font-size: 0.95rem;
+}
+
+.added-list li em,
+.removed-list li em,
+.updated-password-list li em,
+.updated-status-list li em {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.info-title {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-content p {
+    margin-bottom: 1rem;
+}
+
+.info-content h3 {
+    font-size: 1.1rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.info-content ul {
+    padding-left: 1.5rem;
+}
+
+.info-content li {
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+    }
+}

@@ -1,0 +1,257 @@
+<%- contentFor('body') %>
+<div class="edit-account-container">
+    <div class="page-header fade-in">
+        <h1 class="section-title">编辑账号</h1>
+        <div class="header-actions">
+            <a href="/accounts/view/<%= account.id %>" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回账号详情
+            </a>
+            <a href="/accounts" class="btn btn-secondary">
+                <i class="bi bi-list"></i> 账号列表
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="edit-account-form glass-card">
+                <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <%= error %>
+                </div>
+                <% } %>
+
+                <form action="/accounts/edit/<%= account.id %>" method="POST" novalidate>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="username" class="form-label">用户名</label>
+                            <div class="input-group">
+                                <span class="input-icon"><i class="bi bi-person"></i></span>
+                                <input type="text" id="username" name="username" class="form-control"
+                                    placeholder="输入用户名" required autocomplete="off"
+                                    pattern="[a-zA-Z0-9_-]+" title="用户名只能包含字母、数字、下划线和连字符"
+                                    value="<%= account.username %>" readonly>
+                            </div>
+                            <small class="form-text">用户名无法修改</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="domain" class="form-label">域名</label>
+                            <div class="input-group">
+                                <span class="input-icon"><i class="bi bi-globe"></i></span>
+                                <select id="domain" name="domain" class="form-control" disabled>
+                                    <option value="<%= account.domain %>" selected><%= account.domain %></option>
+                                </select>
+                            </div>
+                            <small class="form-text">域名无法修改</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status" class="form-label">状态</label>
+                        <div class="input-group">
+                            <span class="input-icon"><i class="bi bi-toggle-on"></i></span>
+                            <select id="status" name="status" class="form-control" required>
+                                <option value="active" <%= account.status === 'active' ? 'selected' : '' %>>活跃</option>
+                                <option value="inactive" <%= account.status === 'inactive' ? 'selected' : '' %>>未激活</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">密码</label>
+                        <div class="input-group password-group">
+                            <span class="input-icon"><i class="bi bi-key"></i></span>
+                            <input type="password" id="password" name="password" class="form-control"
+                                placeholder="输入新密码或保留空白" autocomplete="new-password">
+                            <button type="button" class="btn btn-outline-secondary toggle-password-btn" title="显示/隐藏密码"
+                                onclick="
+                                    var pwInput = document.getElementById('password');
+                                    if (pwInput.type === 'password') {
+                                        pwInput.type = 'text';
+                                        this.innerHTML = '<i class=\'bi bi-eye-slash\'></i>';
+                                        this.setAttribute('title', '隐藏密码');
+                                    } else {
+                                        pwInput.type = 'password';
+                                        this.innerHTML = '<i class=\'bi bi-eye\'></i>';
+                                        this.setAttribute('title', '显示密码');
+                                    }
+                                ">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary generate-password-btn" title="生成随机密码"
+                                onclick="
+                                    var pwInput = document.getElementById('password');
+                                    var tglBtn = document.querySelector('.toggle-password-btn');
+
+                                    // 生成随机密码
+                                    var charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
+                                    var pwd = '';
+                                    for (var i = 0; i < 12; i++) {
+                                        var randomIndex = Math.floor(Math.random() * charset.length);
+                                        pwd += charset[randomIndex];
+                                    }
+
+                                    pwInput.value = pwd;
+
+                                    // 显示密码
+                                    pwInput.type = 'text';
+                                    if (tglBtn) {
+                                        tglBtn.innerHTML = '<i class=\'bi bi-eye-slash\'></i>';
+                                        tglBtn.setAttribute('title', '隐藏密码');
+                                    }
+
+                                    // 添加高亮效果
+                                    pwInput.classList.add('highlight');
+                                    setTimeout(function() {
+                                        pwInput.classList.remove('highlight');
+                                    }, 300);
+                                ">
+                                <i class="bi bi-magic"></i> 生成
+                            </button>
+                        </div>
+                        <small class="form-text">留空将保持当前密码不变，当前密码: <span class="current-password-display"><%= account.password ? '••••••••••••' : '未设置' %></span></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes" class="form-label">备注</label>
+                        <textarea id="notes" name="notes" class="form-control" rows="3"
+                            placeholder="添加备注信息（可选）"><%= account.notes || '' %></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">邮箱</label>
+                        <div class="email-preview">
+                            <i class="bi bi-envelope-at me-2"></i>
+                            <span id="email-preview-text"><%= account.email %></span>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary save-btn">
+                            <i class="bi bi-check-circle"></i> 保存修改
+                        </button>
+                        <a href="/accounts/view/<%= account.id %>" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> 取消
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="edit-account-info glass-card">
+                <h2 class="info-title"><i class="bi bi-info-circle"></i> 账号编辑说明</h2>
+                <div class="info-content">
+                    <p>您可以修改账号的状态和备注信息。</p>
+                    <h3>注意事项：</h3>
+                    <ul>
+                        <li>用户名和域名无法修改</li>
+                        <li>密码可以直接在表单中修改</li>
+                        <li>将状态设置为"未激活"将禁用Cloudflare路由规则，停止接收邮件</li>
+                        <li>将状态设置为"活跃"将启用Cloudflare路由规则，恢复接收邮件</li>
+                        <li>备注信息仅用于管理，不会影响邮件接收</li>
+                    </ul>
+
+                    <div class="password-section">
+                        <h3>密码说明</h3>
+                        <ul>
+                            <li>您可以在表单中直接设置新密码</li>
+                            <li>留空将保持当前密码不变</li>
+                            <li>可以使用生成按钮创建随机密码</li>
+                            <li>密码用于API调用和IMAP连接鉴权</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
+
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->
+<script>
+    // 全局函数，用于显示/隐藏密码
+    function togglePassword() {
+        console.log('显示/隐藏密码按钮被点击');
+        const passwordInput = document.getElementById('password');
+        const toggleBtn = document.querySelector('.toggle-password-btn');
+
+        if (passwordInput && toggleBtn) {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.innerHTML = '<i class="bi bi-eye-slash"></i>';
+                toggleBtn.setAttribute('title', '隐藏密码');
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.innerHTML = '<i class="bi bi-eye"></i>';
+                toggleBtn.setAttribute('title', '显示密码');
+            }
+        } else {
+            console.error('未找到密码输入框或切换按钮');
+        }
+    }
+
+    // 全局函数，用于生成随机密码
+    function generatePassword() {
+        console.log('生成密码按钮被点击');
+        const passwordInput = document.getElementById('password');
+        const toggleBtn = document.querySelector('.toggle-password-btn');
+
+        if (passwordInput) {
+            // 生成随机密码
+            const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
+            let password = '';
+            for (let i = 0; i < 12; i++) {
+                const randomIndex = Math.floor(Math.random() * charset.length);
+                password += charset[randomIndex];
+            }
+
+            passwordInput.value = password;
+
+            // 显示密码
+            passwordInput.type = 'text';
+            if (toggleBtn) {
+                toggleBtn.innerHTML = '<i class="bi bi-eye-slash"></i>';
+                toggleBtn.setAttribute('title', '隐藏密码');
+            }
+
+            // 添加高亮效果
+            passwordInput.classList.add('highlight');
+            setTimeout(() => {
+                passwordInput.classList.remove('highlight');
+            }, 300);
+        } else {
+            console.error('未找到密码输入框');
+        }
+    }
+
+    // 页面加载完成后的初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('编辑页面已加载');
+
+        // 检查元素是否存在
+        const passwordInput = document.getElementById('password');
+        const togglePasswordBtn = document.querySelector('.toggle-password-btn');
+        const generatePasswordBtn = document.querySelector('.generate-password-btn');
+
+        console.log('密码输入框:', passwordInput ? '已找到' : '未找到');
+        console.log('显示密码按钮:', togglePasswordBtn ? '已找到' : '未找到');
+        console.log('生成密码按钮:', generatePasswordBtn ? '已找到' : '未找到');
+
+        // 添加事件监听器作为备份
+        if (togglePasswordBtn) {
+            togglePasswordBtn.addEventListener('click', togglePassword);
+        }
+
+        if (generatePasswordBtn) {
+            generatePasswordBtn.addEventListener('click', generatePassword);
+        }
+    });
+</script>

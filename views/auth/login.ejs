@@ -1,0 +1,78 @@
+<%- contentFor('body') %>
+<div class="login-container fade-in">
+    <div class="login-card glass-card">
+        <div class="login-header">
+            <h1 class="login-title">CloudflareMailServer</h1>
+            <p class="login-subtitle">开源高效的企业邮箱与API管理平台</p>
+        </div>
+
+        <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert-danger">
+            <%= error %>
+        </div>
+        <% } %>
+
+        <form action="/login" method="POST" class="login-form">
+            <div class="form-group">
+                <label for="username" class="form-label">用户名</label>
+                <div class="input-group">
+                    <span class="input-icon"><i class="bi bi-person"></i></span>
+                    <input type="text" id="username" name="username" class="form-control" placeholder="请输入用户名" autocomplete="username" required>
+                    <span class="focus-border"></span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">密码</label>
+                <div class="input-group">
+                    <span class="input-icon"><i class="bi bi-lock"></i></span>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="请输入密码" autocomplete="current-password" required>
+                    <span class="focus-border"></span>
+                    <button type="button" class="password-toggle" tabindex="-1">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group remember-me">
+                <label class="checkbox-container">
+                    <input type="checkbox" name="remember" id="remember">
+                    <span class="checkmark"></span>
+                    记住我
+                </label>
+                <a href="/forgot-password" class="forgot-password">忘记密码?</a>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary login-btn">
+                    <span class="btn-text">登录系统</span>
+                    <span class="btn-icon"><i class="bi bi-arrow-right"></i></span>
+                </button>
+            </div>
+        </form>
+
+        <div class="login-footer">
+            <div class="system-info">
+                <div class="system-badge">
+                    <i class="bi bi-shield-lock"></i> 安全加密
+                </div>
+                <div class="system-badge">
+                    <i class="bi bi-cloud"></i> 云端同步
+                </div>
+                <div class="system-badge">
+                    <i class="bi bi-speedometer2"></i> 高效管理
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="login-page-footer">
+        <p>&copy; <%= new Date().getFullYear() %> CloudflareOpenMail - 开源企业邮箱管理系统</p>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
+
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->

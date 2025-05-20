@@ -1,0 +1,152 @@
+<%- contentFor('body') %>
+<div class="generate-account-container">
+    <div class="page-header fade-in">
+        <h1 class="section-title">自动生成账号</h1>
+        <div class="header-actions">
+            <a href="/accounts" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回账号列表
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="generate-account-form glass-card">
+                <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <%= error %>
+                </div>
+                <% } %>
+
+                <form action="/accounts/generate" method="POST" novalidate>
+                    <div class="form-group">
+                        <label for="domain" class="form-label">选择域名</label>
+                        <div class="input-group">
+                            <span class="input-icon"><i class="bi bi-globe"></i></span>
+                            <select id="domain" name="domain" class="form-control" required>
+                                <option value="random" selected>随机选择域名</option>
+                                <% domains.forEach(domain => { %>
+                                    <option value="<%= domain.name %>"><%= domain.name %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <small class="form-text">选择要使用的域名，或选择"随机选择域名"自动选择</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="count" class="form-label">生成数量</label>
+                        <div class="input-group">
+                            <span class="input-icon"><i class="bi bi-123"></i></span>
+                            <input type="number" id="count" name="count" class="form-control" 
+                                min="1" max="10" value="1" required>
+                        </div>
+                        <small class="form-text">一次最多可生成10个账号</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes" class="form-label">备注</label>
+                        <textarea id="notes" name="notes" class="form-control" rows="3"
+                            placeholder="添加备注信息（可选）">自动生成的账号</textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary generate-btn">
+                            <i class="bi bi-magic"></i> 开始生成
+                        </button>
+                        <a href="/accounts" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> 取消
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <div id="generation-progress" class="glass-card" style="display: none;">
+                <div class="progress-header">
+                    <h2><i class="bi bi-gear-wide-connected"></i> 正在生成账号...</h2>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <div class="progress-status">准备中...</div>
+                </div>
+                <div class="progress-details">
+                    <div class="step-item">
+                        <div class="step-icon"><i class="bi bi-1-circle"></i></div>
+                        <div class="step-content">
+                            <div class="step-title">生成账号信息</div>
+                            <div class="step-status">等待中</div>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-icon"><i class="bi bi-2-circle"></i></div>
+                        <div class="step-content">
+                            <div class="step-title">推送到Cloudflare</div>
+                            <div class="step-status">等待中</div>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-icon"><i class="bi bi-3-circle"></i></div>
+                        <div class="step-content">
+                            <div class="step-title">保存到数据库</div>
+                            <div class="step-status">等待中</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="generation-result" class="glass-card" style="display: none;">
+                <div class="result-header">
+                    <h2><i class="bi bi-check-circle"></i> 账号生成完成</h2>
+                </div>
+                <div class="result-summary">
+                    成功生成 <span class="success-count">0</span> 个账号，失败 <span class="failed-count">0</span> 个
+                </div>
+                <div class="result-details">
+                    <div class="generated-accounts">
+                        <h3>生成的账号</h3>
+                        <div class="accounts-list"></div>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <a href="/accounts" class="btn btn-primary">
+                        <i class="bi bi-list"></i> 返回账号列表
+                    </a>
+                    <a href="/accounts/generate" class="btn btn-secondary">
+                        <i class="bi bi-plus-circle"></i> 继续生成
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="generate-account-info glass-card">
+                <h2 class="info-title"><i class="bi bi-info-circle"></i> 自动生成说明</h2>
+                <div class="info-content">
+                    <p>自动生成功能可以快速创建随机的账号信息，并自动推送到Cloudflare。</p>
+                    <h3>生成过程：</h3>
+                    <ol>
+                        <li>系统会自动生成随机的用户名和密码</li>
+                        <li>将生成的邮箱地址推送到Cloudflare创建邮件路由</li>
+                        <li>将账号信息保存到本地数据库</li>
+                    </ol>
+                    
+                    <h3>注意事项：</h3>
+                    <ul>
+                        <li>生成的账号会立即激活</li>
+                        <li>用户名由随机单词和数字组成</li>
+                        <li>密码会自动生成，请及时保存</li>
+                        <li>如果推送到Cloudflare失败，整个过程将终止</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
+
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->

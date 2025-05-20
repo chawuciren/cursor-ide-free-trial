@@ -1,0 +1,94 @@
+<%- contentFor('body') %>
+<div class="fetch-mail-container">
+    <div class="mail-header fade-in">
+        <h1 class="section-title">检查新邮件</h1>
+        <div class="header-actions">
+            <a href="/mail" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回邮件列表
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div id="start-fetch" class="glass-card fade-in">
+                <div class="start-fetch-header">
+                    <h2><i class="bi bi-envelope-check"></i> 开始检查新邮件</h2>
+                </div>
+                <div class="start-fetch-content">
+                    <p>点击下方按钮开始检查所有账号的新邮件。检查过程可能需要几分钟时间，请耐心等待。</p>
+                    <button id="start-fetch-btn" class="btn btn-primary">
+                        <i class="bi bi-arrow-repeat"></i> 开始检查新邮件
+                    </button>
+                </div>
+            </div>
+
+            <div id="fetch-progress" class="glass-card" style="display: none;">
+                <div class="progress-header">
+                    <h2><i class="bi bi-arrow-repeat"></i> 正在检查新邮件...</h2>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <div class="progress-status">准备中...</div>
+                </div>
+                <!-- 简化进度显示，只显示百分比进度 -->
+            </div>
+
+            <div id="fetch-result" class="glass-card" style="display: none;">
+                <div class="result-header">
+                    <h2><i class="bi bi-check-circle"></i> 邮件检查完成</h2>
+                </div>
+                <div class="result-summary">
+                    成功获取 <span class="success-count">0</span> 封新邮件
+                </div>
+                <div class="result-details">
+                    <div class="account-summary">
+                        <h3>账号统计</h3>
+                        <div class="account-list"></div>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <a href="/mail" class="btn btn-primary">
+                        <i class="bi bi-list"></i> 返回邮件列表
+                    </a>
+                    <button id="check-again-btn" class="btn btn-secondary">
+                        <i class="bi bi-arrow-repeat"></i> 再次检查
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="fetch-mail-info glass-card">
+                <h2 class="info-title"><i class="bi bi-info-circle"></i> 检查新邮件说明</h2>
+                <div class="info-content">
+                    <p>检查新邮件功能会从IMAP服务器获取所有账号的新邮件，并保存到本地数据库。</p>
+                    <h3>检查过程：</h3>
+                    <ol>
+                        <li>初始化邮件服务，准备连接</li>
+                        <li>连接到IMAP服务器</li>
+                        <li>获取所有账号的邮件列表</li>
+                        <li>解析邮件内容并保存到数据库</li>
+                    </ol>
+
+                    <h3>注意事项：</h3>
+                    <ul>
+                        <li>检查过程可能需要几分钟时间</li>
+                        <li>只会拉取未保存的新邮件</li>
+                        <li>邮件附件会保存到本地服务器</li>
+                        <li>如果连接失败，系统会自动重试</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
+
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->
+<script src="/js/mail-fetch.js"></script>

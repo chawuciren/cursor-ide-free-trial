@@ -1,0 +1,344 @@
+:root {
+    --primary-rgb: 71, 118, 230;
+    --secondary-rgb: 142, 84, 233;
+}
+
+.fetch-mail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.mail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.section-title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0;
+    color: white;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -1rem;
+}
+
+.col-lg-8 {
+    flex: 0 0 66.666667%;
+    max-width: 66.666667%;
+    padding: 0 1rem;
+}
+
+.col-lg-4 {
+    flex: 0 0 33.333333%;
+    max-width: 33.333333%;
+    padding: 0 1rem;
+}
+
+@media (max-width: 992px) {
+    .col-lg-8, .col-lg-4 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 1rem;
+    }
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: var(--box-shadow);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    transition: var(--transition);
+}
+
+.glass-card:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* 开始检查样式 */
+.start-fetch-header {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.start-fetch-header h2 {
+    font-size: 1.5rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.start-fetch-content {
+    text-align: center;
+}
+
+.start-fetch-content p {
+    margin-bottom: 1.5rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+#start-fetch-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+#start-fetch-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 进度条样式 */
+.progress-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.progress-header h2 {
+    font-size: 1.5rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.progress-container {
+    margin-bottom: 2rem;
+}
+
+.progress-bar {
+    height: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+
+.progress-status {
+    text-align: center;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 步骤样式 */
+.progress-details {
+    margin-top: 2rem;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+}
+
+.step-item:last-child {
+    margin-bottom: 0;
+}
+
+.step-icon {
+    flex: 0 0 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    margin-right: 1rem;
+    font-size: 1.2rem;
+    transition: var(--transition);
+}
+
+.step-content {
+    flex: 1;
+}
+
+.step-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.step-status {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* 步骤状态样式 */
+.step-item.waiting .step-icon {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.step-item.in-progress .step-icon {
+    background-color: rgba(var(--primary-rgb), 0.3);
+    animation: pulse 1.5s infinite;
+}
+
+.step-item.completed .step-icon {
+    background-color: rgba(16, 185, 129, 0.3);
+}
+
+.step-item.failed .step-icon {
+    background-color: rgba(239, 68, 68, 0.3);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* 结果样式 */
+.result-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.result-header h2 {
+    font-size: 1.5rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.result-summary {
+    text-align: center;
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius);
+}
+
+.success-count {
+    font-weight: 700;
+    color: var(--success-color);
+}
+
+.failed-count {
+    font-weight: 700;
+    color: var(--danger-color);
+}
+
+.result-details {
+    margin-bottom: 2rem;
+}
+
+.result-details h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.account-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.account-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius);
+}
+
+.account-email {
+    font-weight: 500;
+}
+
+.account-count {
+    color: var(--primary-color);
+}
+
+.result-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+/* 信息卡片样式 */
+.fetch-mail-info {
+    height: 100%;
+}
+
+.info-title {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-content {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.info-content p {
+    margin-bottom: 1.5rem;
+}
+
+.info-content h3 {
+    font-size: 1.1rem;
+    margin: 1.5rem 0 0.75rem;
+}
+
+.info-content ol, .info-content ul {
+    padding-left: 1.5rem;
+}
+
+.info-content li {
+    margin-bottom: 0.5rem;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .fetch-mail-container {
+        padding: 1rem;
+    }
+
+    .mail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .glass-card {
+        padding: 1.5rem;
+    }
+}

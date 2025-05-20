@@ -1,0 +1,166 @@
+<%- contentFor('body') %>
+<div class="view-account-container">
+    <div class="page-header fade-in">
+        <h1 class="section-title">账号详情</h1>
+        <div class="header-actions">
+            <a href="/accounts" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回账号列表
+            </a>
+            <a href="/accounts/edit/<%= account.id %>" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> 编辑账号
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="account-details glass-card fade-in">
+                <div class="account-header">
+                    <div class="account-title">
+                        <h2><%= account.email %></h2>
+                        <span class="status-badge status-<%= account.status %>">
+                            <%= account.status === 'active' ? '活跃' : '未激活' %>
+                        </span>
+                    </div>
+                    <div class="account-actions">
+                        <button class="action-btn copy-email-btn" title="复制邮箱" data-email="<%= account.email %>">
+                            <i class="bi bi-envelope"></i>
+                        </button>
+                        <button class="action-btn copy-password-btn" title="复制密码" data-password="<%= account.password || '' %>">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                        <button class="action-btn reset-password-btn" title="重置密码" data-id="<%= account.id %>">
+                            <i class="bi bi-key"></i>
+                        </button>
+                        <a href="/mail?recipient=<%= encodeURIComponent(account.email) %>" class="action-btn view-mail-btn" title="查看邮件">
+                            <i class="bi bi-envelope-open"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="account-info">
+                    <div class="info-group">
+                        <label>账号ID</label>
+                        <div class="info-value"><%= account.id %></div>
+                    </div>
+                    <div class="info-group">
+                        <label>用户名</label>
+                        <div class="info-value"><%= account.username %></div>
+                    </div>
+                    <div class="info-group">
+                        <label>域名</label>
+                        <div class="info-value"><%= account.domain %></div>
+                    </div>
+                    <div class="info-group">
+                        <label>密码</label>
+                        <div class="info-value password-field">
+                            <span class="password-value"><%= account.password ? '••••••••••••' : '未设置' %></span>
+                            <button class="btn btn-sm btn-outline-primary show-password-btn" data-password="<%= account.password || '' %>">
+                                <i class="bi bi-eye"></i> 显示
+                            </button>
+                        </div>
+                    </div>
+                    <div class="info-group">
+                        <label>创建日期</label>
+                        <div class="info-value"><%= account.created_at %></div>
+                    </div>
+                    <% if (account.last_accessed) { %>
+                    <div class="info-group">
+                        <label>最后访问</label>
+                        <div class="info-value"><%= account.last_accessed %></div>
+                    </div>
+                    <% } %>
+                    <div class="info-group">
+                        <label>备注</label>
+                        <div class="info-value notes-field">
+                            <%= account.notes || '无备注' %>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="account-footer">
+                    <a href="/accounts/edit/<%= account.id %>" class="btn btn-primary">
+                        <i class="bi bi-pencil"></i> 编辑账号
+                    </a>
+                    <button class="btn btn-danger delete-btn" data-id="<%= account.id %>">
+                        <i class="bi bi-trash"></i> 删除账号
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="account-sidebar glass-card fade-in">
+                <h3><i class="bi bi-info-circle"></i> 账号信息</h3>
+                <div class="sidebar-content">
+                    <p>此账号用于接收发送到 <strong><%= account.email %></strong> 的邮件。</p>
+                    <h4>快速操作</h4>
+                    <div class="quick-actions">
+                        <a href="/mail?recipient=<%= encodeURIComponent(account.email) %>" class="btn btn-outline-primary btn-block">
+                            <i class="bi bi-envelope-open"></i> 查看邮件
+                        </a>
+                        <button class="btn btn-outline-secondary btn-block reset-password-btn" data-id="<%= account.id %>">
+                            <i class="bi bi-key"></i> 重置密码
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 重置密码模态框 -->
+<div class="modal" id="reset-password-modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h2>重置密码</h2>
+            <button class="close-btn"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="modal-body">
+            <p>您确定要重置此账号的密码吗？</p>
+            <p>重置后将生成一个新的随机密码，旧密码将无法使用。</p>
+            
+            <div id="reset-password-result" style="display: none;">
+                <div class="password-result">
+                    <h4>新密码</h4>
+                    <div class="new-password-container">
+                        <input type="text" id="new-password" class="form-control" readonly>
+                        <button class="btn btn-sm btn-primary copy-new-password-btn">
+                            <i class="bi bi-clipboard"></i> 复制
+                        </button>
+                    </div>
+                    <p class="password-note">请保存此密码，它只会显示一次！</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary cancel-btn">取消</button>
+            <button class="btn btn-primary confirm-reset-btn">重置密码</button>
+            <button class="btn btn-primary done-btn" style="display: none;">完成</button>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal" id="delete-modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h2>确认删除</h2>
+            <button class="close-btn"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="modal-body">
+            <p>您确定要删除此账号吗？此操作无法撤销。</p>
+            <p>删除后，发送到此邮箱的邮件将不再被接收。</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary cancel-btn">取消</button>
+            <button class="btn btn-danger confirm-delete-btn">删除</button>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('style') %>
+<!-- 使用外部CSS文件 -->
+
+<%- contentFor('script') %>
+<!-- 使用外部JS文件 -->
